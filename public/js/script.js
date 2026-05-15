@@ -3,6 +3,7 @@
 // =====================================================================
 let tuneData = [];
 let injectByMonth = [];
+let columns = [];
 const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 const troubleshootItems = [
@@ -379,6 +380,7 @@ function renderLogsList() {
       <strong style="color:var(--teal)">${l.date}</strong> · ${l.op} · 
       ${l.psi ? '<span style=color:var(--label)>' + l.psi + ' psi</span> · ' : ''} 
       ${l.inj ? l.inj + ' inj. · ' : ''}
+      ${l.col_model ? '<span style="color:var(--blue)">' + l.col_model + '</span> · ' : ''}
       <span style="color:var(--muted)">${l.obs || 'Sem obs.'}</span>
     </div>
   `).join('');
@@ -390,8 +392,25 @@ async function saveLog() {
   const psi = document.getElementById('log-psi').value;
   const inj = document.getElementById('log-inj').value;
   const obs = document.getElementById('log-obs').value;
+  
+  // Novos campos
+  const sistema = document.getElementById('log-sistema').value;
+  const he = document.getElementById('log-he').value;
+  const limpinj = document.getElementById('log-limpinj').value;
+  const septo = document.getElementById('log-septo').value;
+  const liner = document.getElementById('log-liner').value;
+  const col_model = document.getElementById('log-col-model').value;
+  const corte = document.getElementById('log-corte').value || 0;
+  const trpi = document.getElementById('log-trpi').value || 0;
+  const limpfonte = document.getElementById('log-limpfonte').value;
+
   if (!date) { alert('Preencha a data do registro.'); return; }
-  const entry = { date, op, psi, inj, obs };
+  
+  const entry = { 
+    date, op, psi, inj, obs, 
+    sistema, he, limpinj, septo, liner, col_model, corte, trpi, limpfonte 
+  };
+  
   const tuneNum = document.getElementById('log-tunenum').value;
 
   try {
@@ -429,12 +448,19 @@ async function saveLog() {
     }
 
     // clear
-    ['log-op', 'log-psi', 'log-inj', 'log-obs', 'log-corte', 'log-trpi', 'log-emv', 'log-18', 'log-28', 'log-32', 'log-69', 'log-219', 'log-502', 'log-tinterf', 'log-codcol', 'log-tunenum'].forEach(id => {
+    ['log-op', 'log-psi', 'log-inj', 'log-obs', 'log-corte', 'log-trpi', 'log-emv', 'log-18', 'log-28', 'log-32', 'log-69', 'log-219', 'log-502', 'log-tinterf', 'log-col-model', 'log-tunenum'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     ['log-sistema', 'log-he', 'log-limpinj', 'log-septo', 'log-liner', 'log-col', 'log-limpfonte', 'log-fil'].forEach(id => {
       const el = document.getElementById(id); if (el) el.selectedIndex = 0;
     });
+    
+    // Atualiza o dashboard para refletir as mudanças (ex: contador de injeções)
+    renderStatusGeral();
+    renderMaintenanceSchedule();
+    renderColumnHistory();
+    
+    alert('Registro salvo com sucesso!');
   } catch (e) {
     console.error(e);
     alert('Erro ao salvar no servidor.');
@@ -811,20 +837,82 @@ async function saveCorrectiveMaint() {
 function renderCorrectiveTable() {
   const tbody = document.getElementById('corrective-body');
   if (!tbody) return;
-  if (correctiveRecords.length === 0) { return; }
-  const emptyRow = document.getElementById('corrective-empty-row');
-  if (emptyRow) emptyRow.style.display = 'none';
+  
   const existingRows = tbody.querySelectorAll('tr.corrective-record');
   existingRows.forEach(r => r.remove());
+  
+  if (correctiveRecords.length === 0) {
+    const emptyRow = document.getElementById('corrective-empty-row');
+    if (emptyRow) emptyRow.style.display = 'table-row';
+    return;
+  }
+  
+  const emptyRow = document.getElementById('corrective-empty-row');
+  if (emptyRow) emptyRow.style.display = 'none';
+
   correctiveRecords.forEach(r => {
     const tr = document.createElement('tr');
     tr.className = 'corrective-record';
-    tr.innerHTML = `<td class="num">${r.date}</td><td>${r.resp}</td><td>${r.sup}</td>
-      <td style="font-size:11px;max-width:180px">${r.prob}</td>
-      <td style="font-size:11px;max-width:180px">${r.proc}</td>
-      <td style="font-size:11px;max-width:140px">${r.result}</td>`;
+    tr.style.cursor = 'pointer';
+    tr.onclick = () => openCorrectiveModal(r);
+    tr.innerHTML = `
+      <td class="num">${r.date}</td>
+      <td>${r.resp}</td>
+      <td>${r.sup}</td>
+      <td><div class="truncate" style="max-width:180px">${r.prob}</div></td>
+      <td><div class="truncate" style="max-width:180px">${r.proc}</div></td>
+      <td><div class="truncate" style="max-width:140px">${r.result}</div></td>
+    `;
     tbody.appendChild(tr);
   });
+}
+
+function openCorrectiveModal(record) {
+  const modal = document.getElementById('corrective-detail-modal');
+  const title = document.getElementById('det-title');
+  const content = document.getElementById('det-content');
+  const btnDelete = document.getElementById('btn-delete-corrective');
+
+  title.innerHTML = `Manutenção Corretiva — <span style="color:var(--teal)">${record.date}</span>`;
+  content.innerHTML = `
+    <div style="margin-bottom:16px"><strong style="color:var(--muted)">Responsável:</strong> ${record.resp} &nbsp; | &nbsp; <strong style="color:var(--muted)">Supervisão:</strong> ${record.sup}</div>
+    <div style="margin-bottom:12px; background:var(--bg3); padding:12px; border-radius:6px;">
+      <strong style="color:var(--amber); display:block; margin-bottom:4px">Problema / Causa:</strong>
+      ${record.prob}
+    </div>
+    <div style="margin-bottom:12px; background:var(--bg3); padding:12px; border-radius:6px;">
+      <strong style="color:var(--teal); display:block; margin-bottom:4px">Ação Corretiva:</strong>
+      ${record.proc}
+    </div>
+    <div style="background:var(--bg3); padding:12px; border-radius:6px;">
+      <strong style="color:var(--muted); display:block; margin-bottom:4px">Resultado:</strong>
+      ${record.result}
+    </div>
+  `;
+
+  btnDelete.onclick = () => deleteCorrective(record.id);
+  modal.classList.add('show');
+}
+
+function closeCorrectiveModal() {
+  document.getElementById('corrective-detail-modal').classList.remove('show');
+}
+
+async function deleteCorrective(id) {
+  if (!confirm('Deseja realmente excluir este registro de manutenção? Esta ação não pode ser desfeita.')) return;
+  
+  try {
+    const response = await fetch(`/api/corrective/${id}`, { method: 'DELETE' });
+    const result = await response.json();
+    correctiveRecords = result.correctiveRecords;
+    renderCorrectiveTable();
+    updateAnualCorrectiveList();
+    closeCorrectiveModal();
+    renderStatusGeral();
+  } catch (e) {
+    console.error(e);
+    alert('Erro ao excluir registro.');
+  }
 }
 
 function updateAnualCorrectiveList() {
@@ -1078,6 +1166,156 @@ function renderStatusGeral() {
 // =====================================================================
 // INIT
 // =====================================================================
+// =====================================================================
+// COLUMNS MANAGEMENT
+// =====================================================================
+function openColumnModal() {
+  document.getElementById('column-modal').classList.add('show');
+  document.getElementById('col-install-date').value = new Date().toISOString().split('T')[0];
+}
+
+function closeColumnModal() {
+  document.getElementById('column-modal').classList.remove('show');
+}
+
+async function saveColumn() {
+  const type = document.getElementById('col-type').value;
+  const model = document.getElementById('col-model').value.trim();
+  const serial = document.getElementById('col-serial').value.trim();
+  const install_date = document.getElementById('col-install-date').value;
+  const initial_length = parseFloat(document.getElementById('col-initial-length').value || 0);
+  const status = document.getElementById('col-status').value;
+
+  if (!model || !install_date) { alert('Modelo e Data são obrigatórios.'); return; }
+
+  const entry = { type, model, serial, install_date, initial_length, status };
+
+  try {
+    const response = await fetch('/api/columns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry)
+    });
+    const result = await response.json();
+    columns = result.columns;
+    renderColumnHistory();
+    updateColumnSelects();
+    closeColumnModal();
+  } catch (e) {
+    console.error(e);
+    alert('Erro ao salvar coluna.');
+  }
+}
+
+function renderColumnHistory() {
+  const tbody = document.getElementById('column-history-body');
+  if (!tbody) return;
+
+  tbody.innerHTML = columns.map(c => {
+    // Calcular cortes totais para esta coluna
+    const totalCuts = savedLogs
+      .filter(l => l.col_model === c.model)
+      .reduce((sum, l) => sum + (parseFloat(l.corte) || 0), 0);
+    
+    const remaining = c.initial_length - (totalCuts / 100); // cortes em cm, comp em m
+    const statusClass = c.status === 'Em uso' ? 'badge-ok' : c.status === 'Arquivada' ? 'badge-alert' : 'badge-info';
+
+    return `
+      <tr>
+        <td>${c.type}</td>
+        <td class="num">${c.model}</td>
+        <td class="num">${c.serial || '—'}</td>
+        <td class="num">${c.install_date}</td>
+        <td class="num ok">${totalCuts} cm</td>
+        <td class="num"><strong>${remaining.toFixed(2)} m</strong></td>
+        <td><span class="metric-badge ${statusClass}">${c.status}</span></td>
+        <td><button class="btn btn-outline" style="padding:2px 8px" onclick="deleteColumn(${c.id})">×</button></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function deleteColumn(id) {
+  if (!confirm('Deseja excluir esta coluna?')) return;
+  try {
+    const response = await fetch(`/api/columns/${id}`, { method: 'DELETE' });
+    const result = await response.json();
+    columns = result.columns;
+    renderColumnHistory();
+    updateColumnSelects();
+  } catch (e) { console.error(e); }
+}
+
+function updateColumnSelects() {
+  const sel = document.getElementById('log-col-model');
+  if (!sel) return;
+  const activeCols = columns.filter(c => c.status === 'Em uso');
+  sel.innerHTML = '<option value="">— Selecione uma coluna —</option>' + 
+    activeCols.map(c => `<option value="${c.model}">${c.model} (${c.type})</option>`).join('');
+}
+
+// =====================================================================
+// DYNAMIC MAINTENANCE CALENDAR
+// =====================================================================
+function renderMaintenanceSchedule() {
+  const tbody = document.getElementById('maintenance-schedule-body');
+  if (!tbody) return;
+
+  const items = [
+    { id: 'septo', label: 'Septo do injetor', freq: '100–200 injeções', limit: 150 },
+    { id: 'liner', label: 'Liner do injetor', freq: '400–800 injeções', limit: 600 },
+    { id: 'limpfonte', label: 'Limpeza da fonte', freq: 'Trimestral / m/z18>10%', limit: 90 }, // dias
+    { id: 'he', label: 'Troca Cilindro He', freq: 'Por pressão', limit: 0 },
+    { id: 'tune', label: 'Tune completo', freq: 'Semanal / pré-corrida', limit: 7 } // dias
+  ];
+
+  tbody.innerHTML = items.map(item => {
+    let lastDate = 'Não registrado';
+    let nextInfo = '—';
+    let status = 'ok';
+    let statusLabel = 'OK';
+
+    // Encontrar último registro desta manutenção
+    const lastLog = [...savedLogs].reverse().find(l => l[item.id] === 'SIM');
+    
+    if (lastLog) {
+      lastDate = lastLog.date;
+      
+      // Cálculo de injeções desde então
+      if (item.id === 'septo' || item.id === 'liner') {
+        const logsSince = savedLogs.filter(l => new Date(l.date) >= new Date(lastLog.date));
+        const totalInj = logsSince.reduce((sum, l) => sum + (parseInt(l.inj) || 0), 0);
+        nextInfo = `${totalInj} / ${item.limit} inj.`;
+        if (totalInj >= item.limit) { status = 'alert'; statusLabel = 'TROCAR'; }
+        else if (totalInj >= item.limit * 0.8) { status = 'warn'; statusLabel = 'Monitorar'; }
+      } 
+      // Cálculo de dias
+      else if (item.limit > 0) {
+        const diffDays = Math.floor((new Date() - new Date(lastLog.date)) / (1000*60*60*24));
+        nextInfo = `${diffDays} / ${item.limit} dias`;
+        if (diffDays >= item.limit) { status = 'alert'; statusLabel = 'ATRASADO'; }
+        else if (diffDays >= item.limit * 0.8) { status = 'warn'; statusLabel = 'Perto'; }
+      }
+    } else if (item.limit > 0) {
+      status = 'warn';
+      statusLabel = 'Verificar';
+    }
+
+    return `
+      <tr>
+        <td>${item.label}</td>
+        <td>${item.freq}</td>
+        <td class="num">${lastDate}</td>
+        <td class="num ${status === 'ok' ? '' : status}">${nextInfo}</td>
+        <td><span class="metric-badge badge-${status}">${statusLabel}</span></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// =====================================================================
+// INIT
+// =====================================================================
 document.addEventListener('DOMContentLoaded', async () => {
   renderDate();
 
@@ -1088,11 +1326,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     tuneData = data.tuneData || [];
     savedLogs = data.savedLogs || [];
     correctiveRecords = data.correctiveRecords || [];
+    columns = data.columns || [];
 
     const currentYear = new Date().getFullYear();
 
     document.querySelectorAll('.current-year').forEach(el => el.textContent = currentYear);
 
+    // Calcular injeções por mês
     injectByMonth = Array(12).fill(0);
     savedLogs.forEach(log => {
       if (!log.date || !log.inj) return;
@@ -1118,8 +1358,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderLogsList();
     renderCorrectiveTable();
     updateAnualCorrectiveList();
+    
+    // Novas funções
+    renderColumnHistory();
+    updateColumnSelects();
+    renderMaintenanceSchedule();
+    
   } catch (e) {
     console.error("Falha ao se conectar com o servidor Node.js", e);
-    alert("Não foi possível carregar os dados. Certifique-se de que o servidor Node.js está rodando (node server.js).");
+    alert("Não foi possível carregar os dados. Certifique-se de que o servidor Node.js está rodando.");
   }
 });

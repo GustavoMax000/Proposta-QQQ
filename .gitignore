@@ -20,6 +20,7 @@ docs/database.json
 docs/TESTE_convertido.html
 docs/Arvore-de-arquivos-projeto.txt
 backup/
+old/
 *.bak
 *.tmp
 

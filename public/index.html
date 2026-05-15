@@ -31,7 +31,7 @@
   <nav id="sidebar">
     <div class="sidebar-logo">
       <div class="equip-code">Cód. 12E797</div>
-      <div class="equip-name">TSQ 9610<br>GCxGC–MS/MS</div>
+      <div class="equip-name">TSQ 9610<br>GC/MS</div>
       <div class="method-tag">Método 5.389 · Triagem IX</div>
     </div>
 
@@ -93,10 +93,9 @@
           </div>
           <div class="hero-info">
             <div class="hero-model">Thermo Scientific <span>TSQ 9610</span></div>
-            <div class="hero-desc">Espectrômetro de massa triplo quadrupolo acoplado a cromatógrafo gasoso bidimensional
-              (GCxGC). Sistema de ionização EI com filamento duplo e detector MCP.</div>
+            <div class="hero-desc">Espectrômetro de massa triplo quadrupolo acoplado a cromatógrafo gasoso.</div>
             <div class="hero-tags">
-              <span class="tag highlight">GCxGC–MS/MS</span>
+              <span class="tag highlight">GC/MS</span>
               <span class="tag highlight">Código 12E797</span>
               <span class="tag">Método 5.389</span>
               <span class="tag">Ionização EI</span>
@@ -440,70 +439,8 @@
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>Septo do injetor</td>
-                <td>100–200 injeções</td>
-                <td class="num">15/11/<span class="current-year"></span></td>
-                <td class="num warn">~45 inj.</td>
-                <td><span class="metric-badge badge-ok">OK</span></td>
-              </tr>
-              <tr>
-                <td>Liner do injetor</td>
-                <td>400–800 injeções</td>
-                <td class="num">03/02/<span class="current-year"></span></td>
-                <td class="num warn">342/500 inj.</td>
-                <td><span class="metric-badge badge-warn">Monitorar</span></td>
-              </tr>
-              <tr>
-                <td>Corte da coluna 1D</td>
-                <td>Conforme necessidade (degradação pico PI)</td>
-                <td class="num">05/08/<span class="current-year"></span></td>
-                <td class="num">Sob demanda</td>
-                <td><span class="metric-badge badge-ok">OK</span></td>
-              </tr>
-              <tr>
-                <td>Limpeza da fonte de íons</td>
-                <td>Trimestral ou quando m/z 18 > 10%</td>
-                <td class="num">22/09/<span class="current-year"></span></td>
-                <td class="num">Jan/2023</td>
-                <td><span class="metric-badge badge-ok">OK</span></td>
-              </tr>
-              <tr>
-                <td>Verificação óleo bomba foreline</td>
-                <td>Mensal ou após 500h operação</td>
-                <td class="num">Não registrado</td>
-                <td class="num warn">Imediato</td>
-                <td><span class="metric-badge badge-warn">Verificar</span></td>
-              </tr>
-              <tr>
-                <td>Troca cilindro He (gás arraste)</td>
-                <td>Conforme pressão do cilindro</td>
-                <td class="num">18/05/<span class="current-year"></span></td>
-                <td class="num">~30% pressão</td>
-                <td><span class="metric-badge badge-ok">OK</span></td>
-              </tr>
-              <tr>
-                <td>Tune completo do equipamento</td>
-                <td>Semanal recomendado / antes de corridas</td>
-                <td class="num">Tune #7 / <span class="current-year"></span></td>
-                <td class="num">Próxima corrida</td>
-                <td><span class="metric-badge badge-ok">OK</span></td>
-              </tr>
-              <tr>
-                <td>Troca do filamento</td>
-                <td>Quando detectado falha / queima</td>
-                <td class="num">Não registrado</td>
-                <td class="num">Sob demanda</td>
-                <td><span class="metric-badge badge-info">Monitorar</span></td>
-              </tr>
-              <tr>
-                <td>Substituição do electron multiplier</td>
-                <td>Quando EMV ultrapassar 2500 V ou queda de sensibilidade</td>
-                <td class="num">Não registrado</td>
-                <td class="num">EMV: 1842 V</td>
-                <td><span class="metric-badge badge-ok">OK</span></td>
-              </tr>
+            <tbody id="maintenance-schedule-body">
+              <!-- Renderizado dinamicamente -->
             </tbody>
           </table>
         </div>
@@ -528,38 +465,26 @@
 
       <!-- Column history -->
       <div class="card mb24">
-        <div class="card-title">Histórico de Colunas Cromatográficas</div>
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+          Histórico de Colunas Cromatográficas
+          <button class="btn btn-outline" style="font-size:11px; padding:4px 12px;" onclick="openColumnModal()">+ Nova
+            Coluna</button>
+        </div>
         <table class="data-table">
           <thead>
             <tr>
               <th>Dimensão</th>
-              <th>Código</th>
+              <th>Código/Modelo</th>
               <th>Nº de Série</th>
               <th>Instalação</th>
-              <th>Cortes</th>
-              <th>Comprimento Est.</th>
+              <th>Total Cortes</th>
+              <th>Comp. Est.</th>
               <th>Status</th>
+              <th>Ações</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>1D (primária)</td>
-              <td class="num">DB-5MS</td>
-              <td class="num">US9897423H</td>
-              <td class="num">03/02/<span class="current-year"></span></td>
-              <td class="num ok">3 × 3 cm = 9 cm</td>
-              <td class="num">≈ 21 m (orig. 30 m)</td>
-              <td><span class="metric-badge badge-ok">Em uso</span></td>
-            </tr>
-            <tr>
-              <td>2D (secundária)</td>
-              <td class="num">DB-17MS</td>
-              <td class="num">US9901174J</td>
-              <td class="num">03/02/<span class="current-year"></span></td>
-              <td class="num ok">0 cortes</td>
-              <td class="num">≈ 2 m (original)</td>
-              <td><span class="metric-badge badge-ok">Em uso</span></td>
-            </tr>
+          <tbody id="column-history-body">
+            <!-- Renderizado dinamicamente -->
           </tbody>
         </table>
       </div>
@@ -744,8 +669,10 @@
               </select>
             </div>
             <div class="form-field">
-              <label>Código da Coluna</label>
-              <input type="text" id="log-codcol" placeholder="—">
+              <label>Selecione a Coluna</label>
+              <select id="log-col-model">
+                <option value="">— Selecione uma coluna —</option>
+              </select>
             </div>
             <div class="form-field">
               <label>Limpeza Fonte</label>
@@ -971,8 +898,11 @@
         <div class="page-title">Ajuda <span></span></div>
       </div>
       <div class="card" style="grid-column: 1 / -1; max-width: 900px; margin: 0 auto; width: 100%;">
-        <div class="help-header" style="display: flex; align-items: center; gap: 20px; border-bottom: 2px solid var(--border); padding-bottom: 15px; margin-bottom: 20px;">
-          <img src='data:image/jpeg;base64,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' alt='Logo' style="max-height: 100px;">
+        <div class="help-header"
+          style="display: flex; align-items: center; gap: 20px; border-bottom: 2px solid var(--border); padding-bottom: 15px; margin-bottom: 20px;">
+          <img
+            src='data:image/jpeg;base64,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'
+            alt='Logo' style="max-height: 100px;">
           <div>
             <h2 style="margin-bottom: 4px; color: var(--text);">UFRJ - Instituto de Química</h2>
             <p style="color: var(--muted); margin: 0;">Laboratório de Apoio ao Desenvolvimento Tecnológico</p>
@@ -980,59 +910,155 @@
         </div>
 
         <div class="help-content" style="font-size: 14px; line-height: 1.6; color: var(--text); padding-top: 10px;">
-          <h3 style="margin-top: 24px; margin-bottom: 12px; color: var(--teal); border-bottom: 1px solid var(--border); padding-bottom: 8px;">1. Instruções gerais</h3>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>1.1.</strong> Abrir um novo Livro de Registro no início de cada ano, pelo menos, ou sempre que necessário; certificar-se do correto arquivamento dos Livros de Registro anteriores.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>1.2.</strong> Nomear o Livro de Registro como CG-EM_RegistroXX_AAAAMMDD, em que XX corresponde ao número da Chemstation vinculada ao sistema de CG-QqQ e AAAAMMDD corresponde à data invertida de abertura do Livro de Registro. Exemplo: CG-QqQ_Registro10_20150109.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>1.3.</strong> Salvar o arquivo em local apropriado, definido pelo responsável pelo equipamento, em pasta de backup automático.</p>
+          <h3
+            style="margin-top: 24px; margin-bottom: 12px; color: var(--teal); border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            1. Instruções gerais</h3>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>1.1.</strong> Abrir um novo Livro de Registro no
+            início de cada ano, pelo menos, ou sempre que necessário; certificar-se do correto arquivamento dos Livros
+            de Registro anteriores.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>1.2.</strong> Nomear o Livro de Registro como
+            CG-EM_RegistroXX_AAAAMMDD, em que XX corresponde ao número da Chemstation vinculada ao sistema de CG-QqQ e
+            AAAAMMDD corresponde à data invertida de abertura do Livro de Registro. Exemplo: CG-QqQ_Registro10_20150109.
+          </p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>1.3.</strong> Salvar o arquivo em local
+            apropriado, definido pelo responsável pelo equipamento, em pasta de backup automático.</p>
 
-          <h3 style="margin-top: 24px; margin-bottom: 12px; color: var(--teal); border-bottom: 1px solid var(--border); padding-bottom: 8px;">2. Aba Operação-Manutenção</h3>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.1.</strong> Na coluna Data, registrar a data do registro no formato DD/MM/AAAA.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.2.</strong> Na coluna Operador, registrar as iniciais do nome do operador responsável pela verificação e manutenção.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.3.</strong> No campo Geral, coluna Tambiente, registrar o valor da temperatura do laboratório (em ºC).</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.4.</strong> No campo Geral, coluna Sistema desligado/religado, registrar DESL para os dias em que o sistema CG-EM for desligado, REL para os dias em que o sistema for religado e DESL/REL para os dias em que o sistema for desligado e religado. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.5.</strong> No campo CG, coluna Troca do cilindro do gás de arraste, registrar SIM para os dias em que for realizada a troca do cilindro de He. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.6.</strong> No campo CG, coluna Corte da coluna, registrar a medida (em cm) do corte da coluna, nos dias em que este procedimento for realizado. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.7.</strong> No campo CG, coluna Limpeza do injetor, registrar SIM para os dias em que for realizada limpeza do injetor. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.8.</strong> No campo CG, coluna Pressão no injetor, registrar a pressão no injetor do CG, em psi.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.9.</strong> No campo CG, coluna tR do PI, registrar, quando houver, o tempo de retenção do padrão interno, em minutos. Para os dias em que não houver injeção do PI, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.10.</strong> No campo CG, Substituição de componentes, coluna Troca de septo, registrar SIM para os dias em que for efetuada troca do septo do injetor. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.11.</strong> No campo CG, Substituição de componentes, coluna Troca de liner, registrar SIM para os dias em que for efetuada troca do liner do injetor. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.12.</strong> No campo CG, Substituição de componentes, coluna Troca de coluna, registrar SIM para os dias em que for efetuada troca da coluna cromatográfica. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.13.</strong> No campo CG, Substituição de componentes, coluna Código da coluna, registrar o código da nova coluna instalada. Para os dias em que não for efetuada troca da coluna, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.14.</strong> No campo CG, Substituição de componentes, coluna Série da coluna, registrar o número de série da nova coluna instalada. Para os dias em que não for efetuada troca da coluna, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.16.</strong> No campo Espectrômetro de massas, coluna Limpeza da fonte, registrar SIM para os dias em que a limpeza da fonte for efetuada. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.17.</strong> No campo Espectrômetro de massas, coluna Troca do cilindro do gás de colisão, registrar SIM para os dias em que for realizada a troca do cilindro de N2. Para os demais dias,deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.18.</strong> No campo Espectrômetro de massas, coluna Troca da fonte, registrar SIM quando a troca da fonte for efetuada. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.19.</strong> No campo Espectrômetro de massas, coluna Temp. inferface, registrar a temperatura da interface, em ºC, antes da realização do tune. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.20.</strong> No campo Espectrômetro de massas, coluna Nome da pasta do Autotune, registrar o nome atribuído a pasta do tune do equipamento, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.21.</strong> No campo Espectrômetro de massas, coluna Abundância relativa m/z 69, registrar a abundância relativa do íon m/z 69 em relação ao pico base do calibrante, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.22.</strong> No campo Espectrômetro de massas, coluna Abundância relativa m/z 219, registrar a abundância relativa do íon m/z 219 em relação ao pico base do calibrante, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.23.</strong> No campo Espectrômetro de massas, coluna Abundância relativa m/z 502, registrar a abundância relativa do íon m/z 502 em relação ao pico base do calibrante, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.24.</strong> No campo Espectrômetro de massas, coluna Temperatura da fonte, registrar a temperatura da fonte, em ºC, antes da realização do tune. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.25.</strong> No campo Espectrômetro de massas, coluna Temperatura Q1, registrar a temperatura do quadripolo 1 disponível no relatório do tune em Instrument Actuals , em ºC, antes da realização do tune. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.26.</strong> No campo Espectrômetro de massas, coluna Temperatura Q2, registrar a temperatura do quadripolo 2 disponível no relatório do tune em Instrument Actuals , em ºC, antes da realização do tune. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.27.</strong> No campo Espectrômetro de massas, coluna High Vacuum, registrar o valor do vácuo, em Torr, disponível no relatório do tune em Vacuum. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.28.</strong> Nos dias em que for realizado tune, registrar 1 ou 2 no campo Espectrômetro de massas, coluna Filamento, conforme o filamento que esteja acionado, vinculado ao arquivo do tune. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.29.</strong> No campo Espectrômetro de massas, coluna Voltagem do Repeller , registrar o valor da voltagem do Repeller, em V, disponível no relatório do tune em Ion Source . Para os dias em que não for realizado tune, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.30.</strong> No campo Espectrômetro de massas, coluna Max Gain Factor , registrar o valor do parâmetro Max Gain Factor disponível no relatório do tune em Detector . Para os dias em que não for realizado tune, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.31.</strong> Nos dias em que for realizado tune, registrar a voltagem da eletromultiplicadora no campo Espectrômetro de massas, coluna EMV, em V. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.32.</strong> No campo Espectrômetro de massas, Abundância relativa ao m/z 69, coluna m/z 18, registrar a abundância relativa do íon m/z 18 em relação ao m/z 69 disponível no relatório em Diagnostic Information, indicativa de umidade na fonte, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.33.</strong> No campo Espectrômetro de massas, Abundância relativa ao m/z 69, coluna m/z 28, registrar a abundância relativa do íon m/z 28 em relação ao m/z 69, disponível no relatório em Diagnostic Information, indicativa de N2 (vazamento) na fonte, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.34.</strong> No campo Espectrômetro de massas, Abundância relativa ao m/z 69, coluna m/z 32, registrar a abundância relativa do íon m/z 32 em relação ao m/z 69, disponível no relatório em Diagnostic Information, indicativa de O2 (vazamento) na fonte, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.35.</strong> No campo Número de injeções, registrar o número de injeções feitas no dia. Para os dias em que não for feita nenhuma injeção, preencher com 0 (zero).</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.36.</strong> O campo Número de injeções com o mesmo liner só pode ser preenchido na primeira linha do Livro de registro, resgatando o histórico de injeções de um Livro de registros anterior ao novo livro aberto. Para as demais linhas, ele fará a contagem do total de injeções feitas usando um mesmo liner. É indicativo da necessidade de troca do liner.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.37.</strong> Na coluna Observações, registrar textualmente quaisquer informações relevantes em relação à manutenção e/ou às injeções efetuadas.</p>
+          <h3
+            style="margin-top: 24px; margin-bottom: 12px; color: var(--teal); border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            2. Aba Operação-Manutenção</h3>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.1.</strong> Na coluna Data, registrar a data do
+            registro no formato DD/MM/AAAA.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.2.</strong> Na coluna Operador, registrar as
+            iniciais do nome do operador responsável pela verificação e manutenção.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.3.</strong> No campo Geral, coluna Tambiente,
+            registrar o valor da temperatura do laboratório (em ºC).</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.4.</strong> No campo Geral, coluna Sistema
+            desligado/religado, registrar DESL para os dias em que o sistema CG-EM for desligado, REL para os dias em
+            que o sistema for religado e DESL/REL para os dias em que o sistema for desligado e religado. Para os demais
+            dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.5.</strong> No campo CG, coluna Troca do
+            cilindro do gás de arraste, registrar SIM para os dias em que for realizada a troca do cilindro de He. Para
+            os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.6.</strong> No campo CG, coluna Corte da
+            coluna, registrar a medida (em cm) do corte da coluna, nos dias em que este procedimento for realizado. Para
+            os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.7.</strong> No campo CG, coluna Limpeza do
+            injetor, registrar SIM para os dias em que for realizada limpeza do injetor. Para os demais dias, deixar a
+            célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.8.</strong> No campo CG, coluna Pressão no
+            injetor, registrar a pressão no injetor do CG, em psi.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.9.</strong> No campo CG, coluna tR do PI,
+            registrar, quando houver, o tempo de retenção do padrão interno, em minutos. Para os dias em que não houver
+            injeção do PI, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.10.</strong> No campo CG, Substituição de
+            componentes, coluna Troca de septo, registrar SIM para os dias em que for efetuada troca do septo do
+            injetor. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.11.</strong> No campo CG, Substituição de
+            componentes, coluna Troca de liner, registrar SIM para os dias em que for efetuada troca do liner do
+            injetor. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.12.</strong> No campo CG, Substituição de
+            componentes, coluna Troca de coluna, registrar SIM para os dias em que for efetuada troca da coluna
+            cromatográfica. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.13.</strong> No campo CG, Substituição de
+            componentes, coluna Código da coluna, registrar o código da nova coluna instalada. Para os dias em que não
+            for efetuada troca da coluna, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.14.</strong> No campo CG, Substituição de
+            componentes, coluna Série da coluna, registrar o número de série da nova coluna instalada. Para os dias em
+            que não for efetuada troca da coluna, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.16.</strong> No campo Espectrômetro de massas,
+            coluna Limpeza da fonte, registrar SIM para os dias em que a limpeza da fonte for efetuada. Para os demais
+            dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.17.</strong> No campo Espectrômetro de massas,
+            coluna Troca do cilindro do gás de colisão, registrar SIM para os dias em que for realizada a troca do
+            cilindro de N2. Para os demais dias,deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.18.</strong> No campo Espectrômetro de massas,
+            coluna Troca da fonte, registrar SIM quando a troca da fonte for efetuada. Para os demais dias, deixar a
+            célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.19.</strong> No campo Espectrômetro de massas,
+            coluna Temp. inferface, registrar a temperatura da interface, em ºC, antes da realização do tune. Para os
+            dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.20.</strong> No campo Espectrômetro de massas,
+            coluna Nome da pasta do Autotune, registrar o nome atribuído a pasta do tune do equipamento, para os dias em
+            que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.21.</strong> No campo Espectrômetro de massas,
+            coluna Abundância relativa m/z 69, registrar a abundância relativa do íon m/z 69 em relação ao pico base do
+            calibrante, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.22.</strong> No campo Espectrômetro de massas,
+            coluna Abundância relativa m/z 219, registrar a abundância relativa do íon m/z 219 em relação ao pico base
+            do calibrante, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.23.</strong> No campo Espectrômetro de massas,
+            coluna Abundância relativa m/z 502, registrar a abundância relativa do íon m/z 502 em relação ao pico base
+            do calibrante, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.24.</strong> No campo Espectrômetro de massas,
+            coluna Temperatura da fonte, registrar a temperatura da fonte, em ºC, antes da realização do tune. Para os
+            dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.25.</strong> No campo Espectrômetro de massas,
+            coluna Temperatura Q1, registrar a temperatura do quadripolo 1 disponível no relatório do tune em Instrument
+            Actuals , em ºC, antes da realização do tune. Para os dias em que não for realizado tune, deixar a célula em
+            branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.26.</strong> No campo Espectrômetro de massas,
+            coluna Temperatura Q2, registrar a temperatura do quadripolo 2 disponível no relatório do tune em Instrument
+            Actuals , em ºC, antes da realização do tune. Para os dias em que não for realizado tune, deixar a célula em
+            branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.27.</strong> No campo Espectrômetro de massas,
+            coluna High Vacuum, registrar o valor do vácuo, em Torr, disponível no relatório do tune em Vacuum. Para os
+            dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.28.</strong> Nos dias em que for realizado
+            tune, registrar 1 ou 2 no campo Espectrômetro de massas, coluna Filamento, conforme o filamento que esteja
+            acionado, vinculado ao arquivo do tune. Para os dias em que não for realizado tune, deixar a célula em
+            branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.29.</strong> No campo Espectrômetro de massas,
+            coluna Voltagem do Repeller , registrar o valor da voltagem do Repeller, em V, disponível no relatório do
+            tune em Ion Source . Para os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.30.</strong> No campo Espectrômetro de massas,
+            coluna Max Gain Factor , registrar o valor do parâmetro Max Gain Factor disponível no relatório do tune em
+            Detector . Para os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.31.</strong> Nos dias em que for realizado
+            tune, registrar a voltagem da eletromultiplicadora no campo Espectrômetro de massas, coluna EMV, em V. Para
+            os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.32.</strong> No campo Espectrômetro de massas,
+            Abundância relativa ao m/z 69, coluna m/z 18, registrar a abundância relativa do íon m/z 18 em relação ao
+            m/z 69 disponível no relatório em Diagnostic Information, indicativa de umidade na fonte, para os dias em
+            que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.33.</strong> No campo Espectrômetro de massas,
+            Abundância relativa ao m/z 69, coluna m/z 28, registrar a abundância relativa do íon m/z 28 em relação ao
+            m/z 69, disponível no relatório em Diagnostic Information, indicativa de N2 (vazamento) na fonte, para os
+            dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.34.</strong> No campo Espectrômetro de massas,
+            Abundância relativa ao m/z 69, coluna m/z 32, registrar a abundância relativa do íon m/z 32 em relação ao
+            m/z 69, disponível no relatório em Diagnostic Information, indicativa de O2 (vazamento) na fonte, para os
+            dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.35.</strong> No campo Número de injeções,
+            registrar o número de injeções feitas no dia. Para os dias em que não for feita nenhuma injeção, preencher
+            com 0 (zero).</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.36.</strong> O campo Número de injeções com o
+            mesmo liner só pode ser preenchido na primeira linha do Livro de registro, resgatando o histórico de
+            injeções de um Livro de registros anterior ao novo livro aberto. Para as demais linhas, ele fará a contagem
+            do total de injeções feitas usando um mesmo liner. É indicativo da necessidade de troca do liner.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.37.</strong> Na coluna Observações, registrar
+            textualmente quaisquer informações relevantes em relação à manutenção e/ou às injeções efetuadas.</p>
 
-          <h3 style="margin-top: 24px; margin-bottom: 12px; color: var(--teal); border-bottom: 1px solid var(--border); padding-bottom: 8px;">3. Aba Registro de Manutenção Corretiva</h3>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.1.</strong> Na coluna Data, registrar a data da identificação do problema no formato DD/MM/AAAA.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.2.</strong> Na coluna Responsável, registrar as iniciais do nome do responsável pela condução da manutenção corretiva.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.3.</strong> Na coluna Supervisão, registrar as iniciais do nome do supervisor do setor.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.4.</strong> Na coluna Descrição do problema e possíveis causas, descrever a falha apresentada pelo sistema e possíveis causas para sua ocorrência.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.5.</strong> Na coluna Procedimentos de manutenção/correção, descrever as ações corretivas tomadas para solução do problema.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.6.</strong> Na coluna Resultado da manutenção/correção, descrever o procedimento de verificação da eficácia da ação corretiva e seu resultado.</p>
-          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.7.</strong> Na coluna Observações, registrar textualmente quaisquer informações relevantes sobre o problema do sistema e/ou a ação corretiva.</p>
+          <h3
+            style="margin-top: 24px; margin-bottom: 12px; color: var(--teal); border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            3. Aba Registro de Manutenção Corretiva</h3>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.1.</strong> Na coluna Data, registrar a data da
+            identificação do problema no formato DD/MM/AAAA.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.2.</strong> Na coluna Responsável, registrar as
+            iniciais do nome do responsável pela condução da manutenção corretiva.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.3.</strong> Na coluna Supervisão, registrar as
+            iniciais do nome do supervisor do setor.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.4.</strong> Na coluna Descrição do problema e
+            possíveis causas, descrever a falha apresentada pelo sistema e possíveis causas para sua ocorrência.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.5.</strong> Na coluna Procedimentos de
+            manutenção/correção, descrever as ações corretivas tomadas para solução do problema.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.6.</strong> Na coluna Resultado da
+            manutenção/correção, descrever o procedimento de verificação da eficácia da ação corretiva e seu resultado.
+          </p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.7.</strong> Na coluna Observações, registrar
+            textualmente quaisquer informações relevantes sobre o problema do sistema e/ou a ação corretiva.</p>
 
-          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed var(--border); text-align: center; color: var(--muted); font-size: 12px;">
+          <div
+            style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed var(--border); text-align: center; color: var(--muted); font-size: 12px;">
             Instruções de uso do Livro de Registro Eletrônico dos Sistemas CG-QqQ do LAGOA<br>
             EX.191/2020 V.00 de 14/02/2020<br>
             UFRJ - INSTITUTO DE QUÍMICA<br>
@@ -1045,13 +1071,77 @@
 
   </main>
 
-  <!-- PDF Modal -->
-  <div id="pdf-overlay">
-    <div class="pdf-modal">
-      <div class="spinner"></div>
-      <h3>Gerando Relatório Anual</h3>
-      <p>Compilando dados operacionais, tune, manutenções e diagnósticos do equipamento 12E797...</p>
-      <div id="pdf-status" style="font-size:11px;color:var(--teal);margin-top:8px">Preparando páginas…</div>
+  <!-- MODAL: NOVA COLUNA -->
+  <div class="modal-overlay" id="column-modal">
+    <div class="modal-content" style="max-width:500px">
+      <div class="modal-header">
+        <div class="modal-title">Cadastrar Nova Coluna</div>
+        <button class="modal-close" onclick="closeColumnModal()">×</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Dimensão</label>
+          <select id="col-type">
+            <option value="1D (Primária)">1D (Primária)</option>
+            <option value="2D (Secundária)">2D (Secundária)</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Modelo (ex: DB-5MS)</label>
+          <input type="text" id="col-model" placeholder="Modelo da coluna">
+        </div>
+        <div class="form-field">
+          <label>Número de Série</label>
+          <input type="text" id="col-serial" placeholder="S/N">
+        </div>
+        <div class="form-field">
+          <label>Data de Instalação</label>
+          <input type="date" id="col-install-date">
+        </div>
+        <div class="form-field">
+          <label>Comprimento Inicial (m)</label>
+          <input type="number" id="col-initial-length" step="0.1" value="30">
+        </div>
+        <div class="form-field">
+          <label>Status</label>
+          <select id="col-status">
+            <option value="Em uso">Em uso</option>
+            <option value="Reserva">Reserva</option>
+            <option value="Arquivada">Arquivada</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:20px; display:flex; gap:10px;">
+        <button class="btn btn-primary" onclick="saveColumn()" style="flex:1">Salvar Coluna</button>
+        <button class="btn btn-outline" onclick="closeColumnModal()" style="flex:1">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALHES MANUTENÇÃO CORRETIVA -->
+  <div class="modal-overlay" id="corrective-detail-modal">
+    <div class="modal-content" style="max-width:700px">
+      <div class="modal-header">
+        <div class="modal-title" id="det-title">Detalhes da Manutenção</div>
+        <button class="modal-close" onclick="closeCorrectiveModal()">×</button>
+      </div>
+      <div id="det-content" style="font-size:14px; line-height:1.6;">
+        <!-- Preenchido via JS -->
+      </div>
+      <div
+        style="margin-top:24px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:16px;">
+        <button class="btn btn-danger" id="btn-delete-corrective">Excluir Registro</button>
+        <button class="btn btn-outline" onclick="closeCorrectiveModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF GENERATION OVERLAY -->
+  <div class="modal-overlay" id="pdf-overlay">
+    <div class="modal-content" style="max-width:400px; text-align:center; padding:40px;">
+      <div class="pdf-spinner" style="margin:0 auto 20px;"></div>
+      <div class="modal-title" style="margin-bottom:10px;">Gerando Relatório Anual</div>
+      <div id="pdf-status" style="font-size:12px;color:var(--teal);">Preparando páginas...</div>
     </div>
   </div>
 

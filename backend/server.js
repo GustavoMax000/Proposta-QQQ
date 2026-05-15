@@ -37,13 +37,19 @@ async function initDB() {
             tint INTEGER, m69 REAL, m219 REAL, m502 REAL, m18 REAL, m28 REAL, m32 REAL
         );
         CREATE TABLE IF NOT EXISTS saved_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, op TEXT, psi REAL, inj INTEGER, obs TEXT
+            id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, op TEXT, psi REAL, inj INTEGER, 
+            obs TEXT, sistema TEXT, he TEXT, limpinj TEXT, septo TEXT, liner TEXT, 
+            col_model TEXT, corte REAL, trpi REAL, limpfonte TEXT
         );
         CREATE TABLE IF NOT EXISTS corrective_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, resp TEXT, sup TEXT, prob TEXT, proc TEXT, result TEXT
         );
         CREATE TABLE IF NOT EXISTS inject_by_month (
             month_idx INTEGER PRIMARY KEY, count INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS columns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, model TEXT, serial TEXT, 
+            install_date TEXT, initial_length REAL, status TEXT
         );
     `);
 
@@ -90,11 +96,14 @@ app.get('/api/data', async (req, res) => {
         const injectByMonth = Array(12).fill(0);
         injectRows.forEach(row => { injectByMonth[row.month_idx] = row.count; });
         
+        const columns = await db.all('SELECT * FROM columns ORDER BY id DESC');
+        
         res.json({
             tuneData: tuneData,
             injectByMonth: injectByMonth,
             savedLogs: logs,
-            correctiveRecords: corrective
+            correctiveRecords: corrective,
+            columns: columns
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -119,8 +128,11 @@ app.post('/api/tune', async (req, res) => {
 app.post('/api/logs', async (req, res) => {
     try {
         const newLog = req.body;
-        await db.run('INSERT INTO saved_logs (date, op, psi, inj, obs) VALUES (?, ?, ?, ?, ?)', 
-            [newLog.date, newLog.op, newLog.psi, newLog.inj, newLog.obs]);
+        await db.run(`INSERT INTO saved_logs 
+            (date, op, psi, inj, obs, sistema, he, limpinj, septo, liner, col_model, corte, trpi, limpfonte) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+            [newLog.date, newLog.op, newLog.psi, newLog.inj, newLog.obs, newLog.sistema, newLog.he, 
+             newLog.limpinj, newLog.septo, newLog.liner, newLog.col_model, newLog.corte, newLog.trpi, newLog.limpfonte]);
         
         appendTxtLog(`Novo registro diário adicionado pelo operador ${newLog.op || 'Desconhecido'}. (Injeções: ${newLog.inj || 0}, Psi: ${newLog.psi || '—'})`);
         
@@ -141,6 +153,51 @@ app.post('/api/corrective', async (req, res) => {
         
         const records = await db.all('SELECT * FROM corrective_records ORDER BY id ASC');
         res.json({ success: true, correctiveRecords: records });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/corrective/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.run('DELETE FROM corrective_records WHERE id = ?', [id]);
+        appendTxtLog(`Registro de manutenção corretiva ID #${id} excluído.`);
+        const records = await db.all('SELECT * FROM corrective_records ORDER BY id ASC');
+        res.json({ success: true, correctiveRecords: records });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Rotas de Colunas
+app.get('/api/columns', async (req, res) => {
+    try {
+        const cols = await db.all('SELECT * FROM columns ORDER BY id DESC');
+        res.json(cols);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/columns', async (req, res) => {
+    try {
+        const c = req.body;
+        await db.run('INSERT INTO columns (type, model, serial, install_date, initial_length, status) VALUES (?, ?, ?, ?, ?, ?)', 
+            [c.type, c.model, c.serial, c.install_date, c.initial_length, c.status]);
+        const cols = await db.all('SELECT * FROM columns ORDER BY id DESC');
+        res.json({ success: true, columns: cols });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/columns/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.run('DELETE FROM columns WHERE id = ?', [id]);
+        const cols = await db.all('SELECT * FROM columns ORDER BY id DESC');
+        res.json({ success: true, columns: cols });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
