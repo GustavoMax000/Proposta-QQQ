@@ -1,0 +1,17 @@
+{
+  "name": "Dashboard GCxGC — TSQ 9610",
+  "short_name": "Dashboard TSQ",
+  "description": "Monitoramento Dinâmico de Equipamento LAGOA/UFRJ",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0d9488",
+  "icons": [
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

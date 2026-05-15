@@ -1,0 +1,29 @@
+# Dependências
+node_modules/
+
+# Bancos de Dados e Dados Locais
+backend/data/*.sqlite
+backend/data/*.sqlite-journal
+backend/data/*.txt
+log_uso.txt
+
+# Arquivos de Sistema e IDE
+.DS_Store
+Thumbs.db
+.env
+.vscode/
+.idea/
+
+# Arquivos temporários e Backups
+Arquivos/
+docs/database.json
+docs/TESTE_convertido.html
+docs/Arvore-de-arquivos-projeto.txt
+backup/
+*.bak
+*.tmp
+
+# Logs do NPM
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

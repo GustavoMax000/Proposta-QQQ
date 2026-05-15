@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard GCxGC — TSQ 9610 | Cód. 12E797</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Roboto:wght@300;400;500;700&family=Roboto+Condensed:wght@400;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d9488">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('Service Worker registrado!', reg))
+          .catch(err => console.log('Erro no Service Worker', err));
+      });
+    }
+  </script>
+</head>
+
+<body>
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="equip-code">Cód. 12E797</div>
+      <div class="equip-name">TSQ 9610<br>GCxGC–MS/MS</div>
+      <div class="method-tag">Método 5.389 · Triagem IX</div>
+    </div>
+
+    <div class="nav-section-label">Navegação</div>
+    <div class="nav-item active" onclick="showPage('status')">
+      <span class="icon">◉</span> Status Geral
+    </div>
+    <div class="nav-item" onclick="showPage('tune')">
+      <span class="icon">⚡</span> Histórico de Tune
+    </div>
+    <div class="nav-item" onclick="showPage('maintenance')">
+      <span class="icon">🔧</span> Manutenção
+    </div>
+    <div class="nav-item" onclick="showPage('troubleshoot')">
+      <span class="icon">🔍</span> Diagnóstico
+    </div>
+    <div class="nav-item" onclick="showPage('log')">
+      <span class="icon">📋</span> Registro Diário
+    </div>
+    </div>
+    <div class="nav-item" onclick="showPage('analise')">
+      <span class="icon">📊</span> Análise Anual
+    </div>
+
+    <div class="nav-section-label">Relatório</div>
+    <div class="nav-item" onclick="generatePDF()">
+      <span class="icon">📄</span> Exportar PDF
+    </div>
+
+    <div class="sidebar-status">
+      <div class="status-pill">
+        <span class="status-dot"></span> Operacional
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:6px;" id="sidebar-date"></div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main id="main">
+
+    <!-- ===== PAGE: STATUS ===== -->
+    <div class="page active" id="page-status">
+      <div class="top-bar">
+        <div class="page-title">Status <span>Geral</span></div>
+        <div class="top-actions">
+          <button class="btn btn-outline" onclick="showPage('log')">+ Novo Registro</button>
+          <button class="btn btn-outline" onclick="showPage('help')">Ajuda</button>
+          <button class="btn btn-amber" onclick="generatePDF()">⬇ Relatório Anual PDF</button>
+        </div>
+      </div>
+
+      <!-- HERO EQUIPMENT CARD -->
+      <div class="equip-hero mb16">
+        <div class="hero-inner">
+          <div class="hero-image">
+            <div class="grid-lines"></div>
+            <img class="tsq-svg" src="assets/Salinan-GCMSMS-TSQ-9610.png" alt="TSQ 9610 Schematic Illustration"
+              style="max-width: 100%; height: auto;">
+          </div>
+          <div class="hero-info">
+            <div class="hero-model">Thermo Scientific <span>TSQ 9610</span></div>
+            <div class="hero-desc">Espectrômetro de massa triplo quadrupolo acoplado a cromatógrafo gasoso bidimensional
+              (GCxGC). Sistema de ionização EI com filamento duplo e detector MCP.</div>
+            <div class="hero-tags">
+              <span class="tag highlight">GCxGC–MS/MS</span>
+              <span class="tag highlight">Código 12E797</span>
+              <span class="tag">Método 5.389</span>
+              <span class="tag">Ionização EI</span>
+              <span class="tag">Gás: He</span>
+              <span class="tag">Triagem IX</span>
+            </div>
+            <div class="hero-specs">
+              <div class="spec-item">
+                <div class="spec-label">Temperatura Máx. Transfer Line</div>
+                <div class="spec-val">400 °C</div>
+              </div>
+              <div class="spec-item">
+                <div class="spec-label">Temperatura Fonte (EI)</div>
+                <div class="spec-val">0 – 350 °C</div>
+              </div>
+              <div class="spec-item">
+                <div class="spec-label">Detectores</div>
+                <div class="spec-val">MCP (Electron Multiplier)</div>
+              </div>
+              <div class="spec-item">
+                <div class="spec-label">Software</div>
+                <div class="spec-val">TSQ Series 5.0+</div>
+              </div>
+              <div class="spec-item">
+                <div class="spec-label">Filamentos</div>
+                <div class="spec-val">Duplo (1 e 2)</div>
+              </div>
+              <div class="spec-item">
+                <div class="spec-label">Calibrante</div>
+                <div class="spec-val">PFTBA</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERTS -->
+      <div id="alerts-section" class="mb16">
+        <div class="section-label">Alertas Ativos</div>
+        <div id="alerts-container">
+          <!-- Alertas gerados dinamicamente via script.js -->
+        </div>
+      </div>
+
+      <!-- KPI ROW -->
+      <div class="section-label mb16">Parâmetros Operacionais</div>
+      <div class="grid-4 mb24">
+        <div class="metric-card ok">
+          <div class="metric-label">Pressão Injetor</div>
+          <div class="metric-value" id="kpi-psi">—<span class="metric-unit">psi</span></div>
+          <div class="metric-sub">Última leitura registrada</div>
+          <div class="metric-badge badge-ok">✓ Normal</div>
+        </div>
+        <div class="metric-card ok">
+          <div class="metric-label">Temp. Interface (MS)</div>
+          <div class="metric-value" id="kpi-tint">—<span class="metric-unit">°C</span></div>
+          <div class="metric-sub">Máx. recomendado: 400 °C</div>
+          <div class="metric-badge badge-ok">✓ Normal</div>
+        </div>
+        <div class="metric-card info">
+          <div class="metric-label">Filamento Ativo</div>
+          <div class="metric-value" id="kpi-fil">—</div>
+          <div class="metric-sub">Filamento 2 em standby</div>
+          <div class="metric-badge badge-info">Em uso</div>
+        </div>
+        <div class="metric-card warn">
+          <div class="metric-label">Injeções (Liner)</div>
+          <div class="metric-value" id="kpi-inj">—</div>
+          <div class="metric-sub">Limite recomendado: 400–800</div>
+          <div class="metric-badge badge-warn">⚠ Monitorar</div>
+        </div>
+      </div>
+
+      <!-- SECOND ROW KPIs -->
+      <div class="grid-4 mb24">
+        <div class="metric-card ok">
+          <div class="metric-label">EMV (Última Tune)</div>
+          <div class="metric-value" id="kpi-emv">—<span class="metric-unit">V</span></div>
+          <div class="metric-sub">Faixa típica: 1200–2500 V</div>
+          <div class="metric-badge badge-ok">✓ Normal</div>
+        </div>
+        <div class="metric-card ok">
+          <div class="metric-label">m/z 18 (Umidade)</div>
+          <div class="metric-value" id="kpi-18">—<span class="metric-unit">%</span></div>
+          <div class="metric-sub">Limite: &lt; 10% rel. m/z 69</div>
+          <div class="metric-badge badge-ok">✓ Baixo</div>
+        </div>
+        <div class="metric-card ok">
+          <div class="metric-label">m/z 28 (N₂ – Vazam.)</div>
+          <div class="metric-value" id="kpi-28">—<span class="metric-unit">%</span></div>
+          <div class="metric-sub">Limite: &lt; 10% rel. m/z 69</div>
+          <div class="metric-badge badge-ok">✓ Normal</div>
+        </div>
+        <div class="metric-card ok">
+          <div class="metric-label">m/z 32 (O₂ – Vazam.)</div>
+          <div class="metric-value" id="kpi-32">—<span class="metric-unit">%</span></div>
+          <div class="metric-sub">Limite: &lt; 2% rel. m/z 69</div>
+          <div class="metric-badge badge-ok">✓ Normal</div>
+        </div>
+      </div>
+
+      <!-- COMPONENT HEALTH + TUNE CHART -->
+      <div class="grid-2 mb24">
+        <!-- Component health -->
+        <div class="card">
+          <div class="card-title">Vida Útil de Componentes</div>
+          <div class="progress-bar-wrap">
+            <div class="progress-header">
+              <span class="progress-title">Liner (injeções)</span>
+              <span class="progress-val" id="progress-liner-val" style="color:var(--amber)">— / 500 est.</span>
+            </div>
+            <div class="progress-track">
+              <div id="progress-liner-bar" class="progress-fill fill-ok" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-header">
+              <span class="progress-title">Septo (injeções)</span>
+              <span class="progress-val" style="color:var(--green)">— / 150 est.</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill fill-ok" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-header">
+              <span class="progress-title">Filamento 1 (horas est.)</span>
+              <span class="progress-val" style="color:var(--green)">— / 2000h</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill fill-ok" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-header">
+              <span class="progress-title">Coluna 1D (cortes realizados)</span>
+              <span class="progress-val" style="color:var(--green)">— cortes este ano</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill fill-teal" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-header">
+              <span class="progress-title">Cilindro He (estimado)</span>
+              <span class="progress-val" style="color:var(--green)">~70% restante</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill fill-ok" style="width:70%"></div>
+            </div>
+          </div>
+          <div class="progress-bar-wrap" style="margin-bottom:0">
+            <div class="progress-header">
+              <span class="progress-title">Óleo Bomba Foreline</span>
+              <span class="progress-val" style="color:var(--amber)">Verificar em breve</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill fill-warn" style="width:55%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leakage panel -->
+        <div class="card">
+          <div class="card-title">Integridade do Vácuo</div>
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;">
+            <div class="leak-box">
+              <div class="leak-mz">m/z 18<br>Umidade na fonte</div>
+              <div class="leak-val" id="kpi-18-2" style="color:var(--green)">—%</div>
+              <div class="leak-limit">Limite: &lt;10%</div>
+            </div>
+            <div class="leak-box">
+              <div class="leak-mz">m/z 28<br>N₂ (Vazamento)</div>
+              <div class="leak-val" id="kpi-28-2" style="color:var(--green)">—%</div>
+              <div class="leak-limit">Limite: &lt;10%</div>
+            </div>
+            <div class="leak-box">
+              <div class="leak-mz">m/z 32<br>O₂ (Vazamento)</div>
+              <div class="leak-val" id="kpi-32-2" style="color:var(--green)">—%</div>
+              <div class="leak-limit">Limite: &lt;2%</div>
+            </div>
+          </div>
+          <div class="card-title">Abundâncias PFTBA (Última Tune)</div>
+          <div class="indicator-row">
+            <span class="ind-name">m/z 69 (base calibrante)</span>
+            <span class="ind-val ok" id="kpi-69">—%</span>
+          </div>
+          <div class="indicator-row">
+            <span class="ind-name">m/z 219 (abundância relativa)</span>
+            <span class="ind-val ok" id="kpi-219">—%</span>
+          </div>
+          <div class="indicator-row">
+            <span class="ind-name">m/z 502 (abundância relativa)</span>
+            <span class="ind-val ok" id="kpi-502">—%</span>
+          </div>
+          <div class="indicator-row">
+            <span class="ind-name">Temperatura ambiente (Tamb)</span>
+            <span class="ind-val">23.5 °C</span>
+          </div>
+          <div class="indicator-row">
+            <span class="ind-name">Última tune registrada</span>
+            <span class="ind-val" id="kpi-tune">Nenhum tune registrado</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TUNE TREND CHART -->
+      <div class="card mb24">
+        <div class="card-title">Tendência — EMV ao Longo do Tempo</div>
+        <div class="chart-wrap-lg">
+          <canvas id="emvChart"></canvas>
+        </div>
+      </div>
+
+      <!-- RECENT EVENTS -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Últimas Manutenções</div>
+          <div class="timeline" id="recent-maint-timeline">
+            <div class="tl-item">
+              <div>
+                <div class="tl-dot" style="background:var(--green)"></div>
+              </div>
+              <div class="tl-date">15/11/<span class="current-year"></span></div>
+              <div class="tl-text"><strong>Troca de septo</strong> — Operação preventiva. Injetor limpo após
+                procedimento.</div>
+            </div>
+            <div class="tl-item">
+              <div>
+                <div class="tl-dot" style="background:var(--teal)"></div>
+              </div>
+              <div class="tl-date">22/09/<span class="current-year"></span></div>
+              <div class="tl-text"><strong>Limpeza da fonte</strong> — Remoção do ion source cartridge. Lentes e volume
+                iônico limpos com metanol HPLC.</div>
+            </div>
+            <div class="tl-item">
+              <div>
+                <div class="tl-dot" style="background:var(--amber)"></div>
+              </div>
+              <div class="tl-date">05/08/<span class="current-year"></span></div>
+              <div class="tl-text"><strong>Corte da coluna 1D (3 cm)</strong> — Realizado após perda de simetria de pico
+                do PI.</div>
+            </div>
+            <div class="tl-item">
+              <div>
+                <div class="tl-dot" style="background:var(--green)"></div>
+              </div>
+              <div class="tl-date">18/05/<span class="current-year"></span></div>
+              <div class="tl-text"><strong>Troca do cilindro de He</strong> — Gás de arraste substituído. Pressão
+                verificada no injetor.</div>
+            </div>
+            <div class="tl-item">
+              <div>
+                <div class="tl-dot" style="background:var(--blue)"></div>
+              </div>
+              <div class="tl-date">03/02/<span class="current-year"></span></div>
+              <div class="tl-text"><strong>Troca de liner e septo</strong> — Início de novo livro de registro anual.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Injeções por Mês — <span class="current-year"></span></div>
+          <div class="chart-wrap-lg">
+            <canvas id="injectChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: TUNE HISTORY ===== -->
+    <div class="page" id="page-tune">
+      <div class="top-bar">
+        <div class="page-title">Histórico de <span>Tune</span></div>
+        <div class="top-actions">
+          <button class="btn btn-outline" onclick="showPage('log')">+ Registrar Novo Tune</button>
+        </div>
+      </div>
+      <div class="card mb24">
+        <div class="card-title">Parâmetros de Tune — Série Histórica</div>
+        <div class="chart-wrap-lg">
+          <canvas id="tuneChart"></canvas>
+        </div>
+      </div>
+      <div class="card mb24">
+        <div class="card-title">Tabela de Registros de Tune</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nº Tune</th>
+              <th>Data</th>
+              <th>Operador</th>
+              <th>Filamento</th>
+              <th>EMV (V)</th>
+              <th>T Interface (°C)</th>
+              <th>m/z 69 (%)</th>
+              <th>m/z 219 (%)</th>
+              <th>m/z 502 (%)</th>
+              <th>m/z 18</th>
+              <th>m/z 28</th>
+              <th>m/z 32</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tune-table-body">
+          </tbody>
+        </table>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title">EMV — Evolução</div>
+          <div class="chart-wrap"><canvas id="emvSmall"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Umidade (m/z 18)</div>
+          <div class="chart-wrap"><canvas id="h2oChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Vazamentos N₂/O₂</div>
+          <div class="chart-wrap"><canvas id="leakChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: MAINTENANCE ===== -->
+    <div class="page" id="page-maintenance">
+      <div class="top-bar">
+        <div class="page-title">Manutenção <span>Preventiva</span></div>
+      </div>
+      <div class="grid-2-1 mb24">
+        <!-- Schedule table -->
+        <div class="card">
+          <div class="card-title">Calendário de Manutenção — TSQ 9610</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Componente</th>
+                <th>Frequência</th>
+                <th>Último</th>
+                <th>Próximo</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Septo do injetor</td>
+                <td>100–200 injeções</td>
+                <td class="num">15/11/<span class="current-year"></span></td>
+                <td class="num warn">~45 inj.</td>
+                <td><span class="metric-badge badge-ok">OK</span></td>
+              </tr>
+              <tr>
+                <td>Liner do injetor</td>
+                <td>400–800 injeções</td>
+                <td class="num">03/02/<span class="current-year"></span></td>
+                <td class="num warn">342/500 inj.</td>
+                <td><span class="metric-badge badge-warn">Monitorar</span></td>
+              </tr>
+              <tr>
+                <td>Corte da coluna 1D</td>
+                <td>Conforme necessidade (degradação pico PI)</td>
+                <td class="num">05/08/<span class="current-year"></span></td>
+                <td class="num">Sob demanda</td>
+                <td><span class="metric-badge badge-ok">OK</span></td>
+              </tr>
+              <tr>
+                <td>Limpeza da fonte de íons</td>
+                <td>Trimestral ou quando m/z 18 > 10%</td>
+                <td class="num">22/09/<span class="current-year"></span></td>
+                <td class="num">Jan/2023</td>
+                <td><span class="metric-badge badge-ok">OK</span></td>
+              </tr>
+              <tr>
+                <td>Verificação óleo bomba foreline</td>
+                <td>Mensal ou após 500h operação</td>
+                <td class="num">Não registrado</td>
+                <td class="num warn">Imediato</td>
+                <td><span class="metric-badge badge-warn">Verificar</span></td>
+              </tr>
+              <tr>
+                <td>Troca cilindro He (gás arraste)</td>
+                <td>Conforme pressão do cilindro</td>
+                <td class="num">18/05/<span class="current-year"></span></td>
+                <td class="num">~30% pressão</td>
+                <td><span class="metric-badge badge-ok">OK</span></td>
+              </tr>
+              <tr>
+                <td>Tune completo do equipamento</td>
+                <td>Semanal recomendado / antes de corridas</td>
+                <td class="num">Tune #7 / <span class="current-year"></span></td>
+                <td class="num">Próxima corrida</td>
+                <td><span class="metric-badge badge-ok">OK</span></td>
+              </tr>
+              <tr>
+                <td>Troca do filamento</td>
+                <td>Quando detectado falha / queima</td>
+                <td class="num">Não registrado</td>
+                <td class="num">Sob demanda</td>
+                <td><span class="metric-badge badge-info">Monitorar</span></td>
+              </tr>
+              <tr>
+                <td>Substituição do electron multiplier</td>
+                <td>Quando EMV ultrapassar 2500 V ou queda de sensibilidade</td>
+                <td class="num">Não registrado</td>
+                <td class="num">EMV: 1842 V</td>
+                <td><span class="metric-badge badge-ok">OK</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Checklist -->
+        <div class="card">
+          <div class="card-title">Checklist Operacional Diário</div>
+          <div id="checklist">
+            <div class="progress-bar-wrap" style="margin-bottom:20px">
+              <div class="progress-header"><span class="progress-title">Progresso do dia</span><span
+                  id="check-count">0/8</span></div>
+              <div class="progress-track">
+                <div id="check-bar" class="progress-fill fill-teal" style="width:0%"></div>
+              </div>
+            </div>
+          </div>
+          <div id="check-items"></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:14px;line-height:1.6">
+            💡 Referência: User Guide TSQ 9610 — Capítulo 1 "Confirming Your Instrument is Working"
+          </div>
+        </div>
+      </div>
+
+      <!-- Column history -->
+      <div class="card mb24">
+        <div class="card-title">Histórico de Colunas Cromatográficas</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Dimensão</th>
+              <th>Código</th>
+              <th>Nº de Série</th>
+              <th>Instalação</th>
+              <th>Cortes</th>
+              <th>Comprimento Est.</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1D (primária)</td>
+              <td class="num">DB-5MS</td>
+              <td class="num">US9897423H</td>
+              <td class="num">03/02/<span class="current-year"></span></td>
+              <td class="num ok">3 × 3 cm = 9 cm</td>
+              <td class="num">≈ 21 m (orig. 30 m)</td>
+              <td><span class="metric-badge badge-ok">Em uso</span></td>
+            </tr>
+            <tr>
+              <td>2D (secundária)</td>
+              <td class="num">DB-17MS</td>
+              <td class="num">US9901174J</td>
+              <td class="num">03/02/<span class="current-year"></span></td>
+              <td class="num ok">0 cortes</td>
+              <td class="num">≈ 2 m (original)</td>
+              <td><span class="metric-badge badge-ok">Em uso</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Corrective maintenance log -->
+      <div class="card mb24">
+        <div class="card-title">Registro de Manutenções Corretivas</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Responsável</th>
+              <th>Supervisão</th>
+              <th>Problema / Causa</th>
+              <th>Ação Corretiva</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody id="corrective-body">
+            <tr id="corrective-empty-row">
+              <td class="num">—</td>
+              <td>—</td>
+              <td>—</td>
+              <td colspan="3" style="color:var(--muted);font-style:italic">Nenhuma manutenção corretiva registrada. Use
+                o formulário abaixo para adicionar.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Add corrective record form -->
+      <div class="card">
+        <div class="card-title">+ Adicionar Manutenção Corretiva</div>
+        <div class="form-grid">
+          <div class="form-field"><label>Data</label><input type="date" id="cor-date"></div>
+          <div class="form-field"><label>Responsável</label><input type="text" id="cor-resp"
+              placeholder="Iniciais do responsável"></div>
+          <div class="form-field"><label>Supervisão</label><input type="text" id="cor-sup"
+              placeholder="Iniciais do supervisor"></div>
+          <div class="form-field form-full"><label>Descrição do Problema e Possíveis Causas</label><textarea
+              id="cor-prob" placeholder="Descreva a falha apresentada e as possíveis causas..."></textarea></div>
+          <div class="form-field form-full"><label>Procedimentos de Manutenção / Correção</label><textarea id="cor-proc"
+              placeholder="Descreva as ações corretivas tomadas..."></textarea></div>
+          <div class="form-field form-full"><label>Resultado da Correção (verificação de eficácia)</label><textarea
+              id="cor-result" placeholder="Descreva como foi verificada a eficácia e o resultado obtido..."></textarea>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveCorrectiveMaint()"
+          style="margin-top:12px;padding:10px 28px">Registrar Manutenção Corretiva</button>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: TROUBLESHOOT ===== -->
+    <div class="page" id="page-troubleshoot">
+      <div class="top-bar">
+        <div class="page-title">Guia de <span>Diagnóstico</span></div>
+        <div class="top-actions">
+          <span style="font-size:11px;color:var(--muted);">Fonte: TSQ 9610 Hardware Manual Rev. B · Jul 2024</span>
+        </div>
+      </div>
+
+      <div class="alert-banner warn mb16">
+        <span class="alert-icon">📘</span>
+        <div class="alert-text"><strong>Referência oficial</strong> — Este guia é baseado no TSQ 9610 Hardware Manual
+          (1R120622-0003 Rev. B) e User Guide (1R120622-0002 Rev. B). Em caso de dúvida, consulte os documentos
+          originais.</div>
+      </div>
+
+      <div class="section-label mb16">Sensibilidade e Sinal</div>
+      <div id="trouble-container"></div>
+
+      <div style="margin-top:24px;padding:16px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <div class="card-title">Parâmetros Críticos de Tune — Limites de Referência</div>
+        <div class="grid-3" style="margin-top:0">
+          <div>
+            <div class="indicator-row"><span class="ind-name">m/z 18 (H₂O – umidade)</span><span
+                class="ind-val warn">&lt; 10% de m/z 69</span></div>
+            <div class="indicator-row"><span class="ind-name">m/z 28 (N₂ – vazamento ar)</span><span
+                class="ind-val warn">&lt; 10% de m/z 69</span></div>
+            <div class="indicator-row"><span class="ind-name">m/z 32 (O₂ – vazamento ar)</span><span
+                class="ind-val warn">&lt; 2% de m/z 69</span></div>
+          </div>
+          <div>
+            <div class="indicator-row"><span class="ind-name">EMV (electron multiplier voltage)</span><span
+                class="ind-val">1200 – 2500 V</span></div>
+            <div class="indicator-row"><span class="ind-name">T Fonte íons (EI default)</span><span class="ind-val">200
+                °C</span></div>
+            <div class="indicator-row"><span class="ind-name">T Transfer Line (máx. col.)</span><span
+                class="ind-val">&lt; 280 °C (poliimida)</span></div>
+          </div>
+          <div>
+            <div class="indicator-row"><span class="ind-name">Energia elétrons (EI padrão)</span><span
+                class="ind-val">70 eV</span></div>
+            <div class="indicator-row"><span class="ind-name">Corrente de emissão (default)</span><span
+                class="ind-val">50 µA (EI)</span></div>
+            <div class="indicator-row"><span class="ind-name">Pressão gás arraste no injetor</span><span
+                class="ind-val">Monitorar psi diário</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: LOG ===== -->
+    <div class="page" id="page-log">
+      <div class="top-bar">
+        <div class="page-title">Registro <span>Diário</span></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Novo Registro — Operação / Manutenção Preventiva</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Data</label>
+              <input type="date" id="log-date">
+            </div>
+            <div class="form-field">
+              <label>Operador (iniciais)</label>
+              <input type="text" id="log-op" placeholder="ex: JRS">
+            </div>
+            <div class="form-field">
+              <label>Tamb (°C)</label>
+              <input type="number" id="log-temp" placeholder="23.0" step="0.1">
+            </div>
+            <div class="form-field">
+              <label>Sistema</label>
+              <select id="log-sistema">
+                <option value="">— Normal —</option>
+                <option value="DESL">DESL</option>
+                <option value="REL">REL</option>
+                <option value="DESL/REL">DESL/REL</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Pressão Injetor (psi)</label>
+              <input type="number" id="log-psi" placeholder="14.0" step="0.1">
+            </div>
+            <div class="form-field">
+              <label>Nº Injeções</label>
+              <input type="number" id="log-inj" placeholder="0">
+            </div>
+            <div class="form-field">
+              <label>Corte da Coluna (cm)</label>
+              <input type="number" id="log-corte" placeholder="—" step="0.5">
+            </div>
+            <div class="form-field">
+              <label>tR do PI (min)</label>
+              <input type="number" id="log-trpi" placeholder="—" step="0.01">
+            </div>
+            <div class="form-field">
+              <label>Troca Cilindro He</label>
+              <select id="log-he">
+                <option value="">Não</option>
+                <option value="SIM">SIM</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Limpeza Injetor</label>
+              <select id="log-limpinj">
+                <option value="">Não</option>
+                <option value="SIM">SIM</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Troca Septo</label>
+              <select id="log-septo">
+                <option value="">Não</option>
+                <option value="SIM">SIM</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Troca Liner</label>
+              <select id="log-liner">
+                <option value="">Não</option>
+                <option value="SIM">SIM</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Troca Coluna</label>
+              <select id="log-col">
+                <option value="">Não</option>
+                <option value="SIM">SIM</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Código da Coluna</label>
+              <input type="text" id="log-codcol" placeholder="—">
+            </div>
+            <div class="form-field">
+              <label>Limpeza Fonte</label>
+              <select id="log-limpfonte">
+                <option value="">Não</option>
+                <option value="SIM">SIM</option>
+              </select>
+            </div>
+            <div class="form-field form-full">
+              <label>Observações</label>
+              <textarea id="log-obs" placeholder="Registre qualquer ocorrência relevante..."></textarea>
+            </div>
+          </div>
+          <div style="margin-top:4px;margin-bottom:16px;font-size:11px;color:var(--muted)">ℹ Preencha os campos de Tune
+            na coluna ao lado, se tune foi realizado no dia.</div>
+          <button class="btn btn-primary" onclick="saveLog()" style="width:100%;padding:10px">Salvar Registro</button>
+        </div>
+        <div>
+          <!-- Tune fields -->
+          <div class="card mb16">
+            <div class="card-title">Dados de Tune (se realizado)</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr">
+              <div class="form-field">
+                <label>Nº do Tune</label>
+                <input type="number" id="log-tunenum" placeholder="—">
+              </div>
+              <div class="form-field">
+                <label>Filamento</label>
+                <select id="log-fil">
+                  <option value="">—</option>
+                  <option>1</option>
+                  <option>2</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>T Interface (°C)</label>
+                <input type="number" id="log-tinterf" placeholder="280">
+              </div>
+              <div class="form-field">
+                <label>EMV (V)</label>
+                <input type="number" id="log-emv" placeholder="1842">
+              </div>
+              <div class="form-field">
+                <label>m/z 69 (%)</label>
+                <input type="number" id="log-69" placeholder="100" step="0.1">
+              </div>
+              <div class="form-field">
+                <label>m/z 219 (%)</label>
+                <input type="number" id="log-219" placeholder="—" step="0.1">
+              </div>
+              <div class="form-field">
+                <label>m/z 502 (%)</label>
+                <input type="number" id="log-502" placeholder="—" step="0.1">
+              </div>
+              <div class="form-field">
+                <label>m/z 18 (umidade)</label>
+                <input type="number" id="log-18" placeholder="—" step="0.1">
+              </div>
+              <div class="form-field">
+                <label>m/z 28 (N₂)</label>
+                <input type="number" id="log-28" placeholder="—" step="0.1">
+              </div>
+              <div class="form-field">
+                <label>m/z 32 (O₂)</label>
+                <input type="number" id="log-32" placeholder="—" step="0.1">
+              </div>
+            </div>
+          </div>
+          <!-- Saved logs -->
+          <div class="card">
+            <div class="card-title">Registros Salvos — Sessão Atual</div>
+            <div id="saved-logs" style="font-size:12px;color:var(--muted)">Nenhum registro salvo ainda nesta sessão.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: ANÁLISE ANUAL ===== -->
+    <div class="page" id="page-analise">
+      <div class="top-bar">
+        <div class="page-title">Análise <span>Anual <span class="current-year"></span></span></div>
+        <div class="top-actions">
+          <button class="btn btn-amber" onclick="generatePDF()">&#8595; Exportar Relatório PDF</button>
+        </div>
+      </div>
+      <div class="grid-4 mb24">
+        <div class="metric-card ok">
+          <div class="metric-label">Total de Injeções</div>
+          <div class="metric-value">442</div>
+          <div class="metric-sub">Estimativa anual <span class="current-year"></span></div>
+          <div class="metric-badge badge-ok">✓ Registrado</div>
+        </div>
+        <div class="metric-card ok">
+          <div class="metric-label">Tunes Realizados</div>
+          <div class="metric-value">7</div>
+          <div class="metric-sub">Jan–Nov <span class="current-year"></span></div>
+          <div class="metric-badge badge-ok">✓ Conforme</div>
+        </div>
+        <div class="metric-card ok">
+          <div class="metric-label">Manutenções Corretivas</div>
+          <div class="metric-value">0</div>
+          <div class="metric-sub">Sem falhas críticas</div>
+          <div class="metric-badge badge-ok">✓ Zero falhas</div>
+        </div>
+        <div class="metric-card info">
+          <div class="metric-label">Disponibilidade Est.</div>
+          <div class="metric-value">97<span class="metric-unit">%</span></div>
+          <div class="metric-sub">Paradas planejadas apenas</div>
+          <div class="metric-badge badge-info">Boa</div>
+        </div>
+      </div>
+      <div class="grid-2 mb24">
+        <div class="card">
+          <div class="card-title">Evolução do EMV — <span class="current-year"></span></div>
+          <div class="chart-wrap-lg"><canvas id="emvAnual"></canvas></div>
+          <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.7">
+            O EMV cresceu <strong style="color:var(--amber)">+92 V</strong> ao longo de <span
+              class="current-year"></span> (1750→1842 V), taxa de ~13
+            V/mês. Projeção 2023: ~1950–2000 V. Limite de ação: <span style="color:var(--red)">2500 V</span>.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Distribuição de Injeções por Mês</div>
+          <div class="chart-wrap-lg"><canvas id="injAnual"></canvas></div>
+          <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.7">
+            Pico em julho (71 injeções). Total anual estimado: <strong style="color:var(--teal)">442 injeções</strong>.
+          </div>
+        </div>
+      </div>
+      <div class="card mb24">
+        <div class="card-title">Integridade do Sistema ao Longo do Ano — m/z 18, 28 e 32</div>
+        <div class="chart-wrap-lg"><canvas id="leakAnual"></canvas></div>
+        <div style="display:flex;gap:20px;margin-top:12px;font-size:11px;color:var(--muted)">
+          <span>Limite m/z 18: <span style="color:var(--amber)">10%</span></span>
+          <span>Limite m/z 28: <span style="color:var(--amber)">10%</span></span>
+          <span>Limite m/z 32: <span style="color:var(--red)">2%</span></span>
+          <span style="margin-left:auto">✓ Todos os valores dentro dos limites em <span
+              class="current-year"></span></span>
+        </div>
+      </div>
+      <div class="grid-2 mb24">
+        <div class="card">
+          <div class="card-title">Linha do Tempo de Manutenções — <span class="current-year"></span></div>
+          <div class="timeline">
+            <div class="tl-item">
+              <div>
+                <div class="tl-dot" style="background:var(--green)"></div>
+              </div>
+              <div class="tl-date">03/02/<span class="current-year"></span></div>
+              <div class="tl-text"><strong>Troca de liner e septo</strong> — Início do ciclo anual</div>
+            </div>
+            <div class="tl-item">
+              <div>
+                <div class="tl-dot" style="background:var(--green)"></div>
+              </div>
+              <div class="tl-date">18/05/<span class="current-year"></span></div>
+              <div class="tl-text"><strong>Troca cilindro He</strong> — Gás de arraste renovado</div>
+            </div>
+            <div class="tl-item">
+              <div>
+                <div class="tl-dot" style="background:var(--teal)"></div>
+              </div>
+              <div class="tl-date">05/08/<span class="current-year"></span></div>
+              <div class="tl-text"><strong>Corte de coluna 1D</strong> — 3 cm removidos (3 cortes no total)</div>
+            </div>
+            <div class="tl-item">
+              <div>
+                <div class="tl-dot" style="background:var(--teal)"></div>
+              </div>
+              <div class="tl-date">22/09/<span class="current-year"></span></div>
+              <div class="tl-text"><strong>Limpeza da fonte de íons</strong> — Ion source cartridge lavado com MeOH HPLC
+              </div>
+            </div>
+            <div class="tl-item">
+              <div>
+                <div class="tl-dot" style="background:var(--green)"></div>
+              </div>
+              <div class="tl-date">15/11/<span class="current-year"></span></div>
+              <div class="tl-text"><strong>Troca de septo</strong> — Manutenção preventiva programada</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Recomendações para 2023</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+            <div class="alert-banner ok" style="margin:0"><span class="alert-icon">✓</span>
+              <div class="alert-text"><strong>Nenhuma falha crítica em <span class="current-year"></span></strong> —
+                Sistema com excelente histórico
+                de disponibilidade. Manutenção preventiva foi eficaz.</div>
+            </div>
+            <div class="alert-banner warn" style="margin:0"><span class="alert-icon">⚠</span>
+              <div class="alert-text"><strong>Substituir liner imediatamente</strong> — 342 injeções. Risco de
+                contaminação do injetor acima de 400 injeções.</div>
+            </div>
+            <div class="alert-banner warn" style="margin:0"><span class="alert-icon">⚠</span>
+              <div class="alert-text"><strong>Verificar óleo da bomba foreline</strong> — Nenhum registro localizado em
+                <span class="current-year"></span>. Verificar imediatamente.
+              </div>
+            </div>
+            <div class="alert-banner ok" style="margin:0"><span class="alert-icon">📈</span>
+              <div class="alert-text"><strong>EMV em 1842 V — normal</strong> — Monitorar tendência. Projeção ~1950 V em
+                mid-2023. Ação: acima de 2500 V.</div>
+            </div>
+            <div class="alert-banner ok" style="margin:0"><span class="alert-icon">🧹</span>
+              <div class="alert-text"><strong>Limpeza da fonte — 1T/2023</strong> — Agendar para jan/fev 2023, manter
+                intervalo trimestral.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Manutenções Corretivas Registradas (Sessão)</div>
+        <div id="anual-corrective-list" style="font-size:12px;color:var(--muted);padding:8px 0">Nenhuma manutenção
+          corretiva registrada nesta sessão. Use a aba <strong style="color:var(--teal)">Manutenção</strong> para
+          adicionar.</div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: HELP ===== -->
+    <div class="page" id="page-help">
+      <div class="top-bar">
+        <div class="page-title">Ajuda <span></span></div>
+      </div>
+      <div class="card" style="grid-column: 1 / -1; max-width: 900px; margin: 0 auto; width: 100%;">
+        <div class="help-header" style="display: flex; align-items: center; gap: 20px; border-bottom: 2px solid var(--border); padding-bottom: 15px; margin-bottom: 20px;">
+          <img src='data:image/jpeg;base64,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' alt='Logo' style="max-height: 100px;">
+          <div>
+            <h2 style="margin-bottom: 4px; color: var(--text);">UFRJ - Instituto de Química</h2>
+            <p style="color: var(--muted); margin: 0;">Laboratório de Apoio ao Desenvolvimento Tecnológico</p>
+          </div>
+        </div>
+
+        <div class="help-content" style="font-size: 14px; line-height: 1.6; color: var(--text); padding-top: 10px;">
+          <h3 style="margin-top: 24px; margin-bottom: 12px; color: var(--teal); border-bottom: 1px solid var(--border); padding-bottom: 8px;">1. Instruções gerais</h3>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>1.1.</strong> Abrir um novo Livro de Registro no início de cada ano, pelo menos, ou sempre que necessário; certificar-se do correto arquivamento dos Livros de Registro anteriores.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>1.2.</strong> Nomear o Livro de Registro como CG-EM_RegistroXX_AAAAMMDD, em que XX corresponde ao número da Chemstation vinculada ao sistema de CG-QqQ e AAAAMMDD corresponde à data invertida de abertura do Livro de Registro. Exemplo: CG-QqQ_Registro10_20150109.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>1.3.</strong> Salvar o arquivo em local apropriado, definido pelo responsável pelo equipamento, em pasta de backup automático.</p>
+
+          <h3 style="margin-top: 24px; margin-bottom: 12px; color: var(--teal); border-bottom: 1px solid var(--border); padding-bottom: 8px;">2. Aba Operação-Manutenção</h3>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.1.</strong> Na coluna Data, registrar a data do registro no formato DD/MM/AAAA.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.2.</strong> Na coluna Operador, registrar as iniciais do nome do operador responsável pela verificação e manutenção.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.3.</strong> No campo Geral, coluna Tambiente, registrar o valor da temperatura do laboratório (em ºC).</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.4.</strong> No campo Geral, coluna Sistema desligado/religado, registrar DESL para os dias em que o sistema CG-EM for desligado, REL para os dias em que o sistema for religado e DESL/REL para os dias em que o sistema for desligado e religado. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.5.</strong> No campo CG, coluna Troca do cilindro do gás de arraste, registrar SIM para os dias em que for realizada a troca do cilindro de He. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.6.</strong> No campo CG, coluna Corte da coluna, registrar a medida (em cm) do corte da coluna, nos dias em que este procedimento for realizado. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.7.</strong> No campo CG, coluna Limpeza do injetor, registrar SIM para os dias em que for realizada limpeza do injetor. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.8.</strong> No campo CG, coluna Pressão no injetor, registrar a pressão no injetor do CG, em psi.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.9.</strong> No campo CG, coluna tR do PI, registrar, quando houver, o tempo de retenção do padrão interno, em minutos. Para os dias em que não houver injeção do PI, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.10.</strong> No campo CG, Substituição de componentes, coluna Troca de septo, registrar SIM para os dias em que for efetuada troca do septo do injetor. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.11.</strong> No campo CG, Substituição de componentes, coluna Troca de liner, registrar SIM para os dias em que for efetuada troca do liner do injetor. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.12.</strong> No campo CG, Substituição de componentes, coluna Troca de coluna, registrar SIM para os dias em que for efetuada troca da coluna cromatográfica. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.13.</strong> No campo CG, Substituição de componentes, coluna Código da coluna, registrar o código da nova coluna instalada. Para os dias em que não for efetuada troca da coluna, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.14.</strong> No campo CG, Substituição de componentes, coluna Série da coluna, registrar o número de série da nova coluna instalada. Para os dias em que não for efetuada troca da coluna, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.16.</strong> No campo Espectrômetro de massas, coluna Limpeza da fonte, registrar SIM para os dias em que a limpeza da fonte for efetuada. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.17.</strong> No campo Espectrômetro de massas, coluna Troca do cilindro do gás de colisão, registrar SIM para os dias em que for realizada a troca do cilindro de N2. Para os demais dias,deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.18.</strong> No campo Espectrômetro de massas, coluna Troca da fonte, registrar SIM quando a troca da fonte for efetuada. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.19.</strong> No campo Espectrômetro de massas, coluna Temp. inferface, registrar a temperatura da interface, em ºC, antes da realização do tune. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.20.</strong> No campo Espectrômetro de massas, coluna Nome da pasta do Autotune, registrar o nome atribuído a pasta do tune do equipamento, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.21.</strong> No campo Espectrômetro de massas, coluna Abundância relativa m/z 69, registrar a abundância relativa do íon m/z 69 em relação ao pico base do calibrante, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.22.</strong> No campo Espectrômetro de massas, coluna Abundância relativa m/z 219, registrar a abundância relativa do íon m/z 219 em relação ao pico base do calibrante, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.23.</strong> No campo Espectrômetro de massas, coluna Abundância relativa m/z 502, registrar a abundância relativa do íon m/z 502 em relação ao pico base do calibrante, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.24.</strong> No campo Espectrômetro de massas, coluna Temperatura da fonte, registrar a temperatura da fonte, em ºC, antes da realização do tune. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.25.</strong> No campo Espectrômetro de massas, coluna Temperatura Q1, registrar a temperatura do quadripolo 1 disponível no relatório do tune em Instrument Actuals , em ºC, antes da realização do tune. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.26.</strong> No campo Espectrômetro de massas, coluna Temperatura Q2, registrar a temperatura do quadripolo 2 disponível no relatório do tune em Instrument Actuals , em ºC, antes da realização do tune. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.27.</strong> No campo Espectrômetro de massas, coluna High Vacuum, registrar o valor do vácuo, em Torr, disponível no relatório do tune em Vacuum. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.28.</strong> Nos dias em que for realizado tune, registrar 1 ou 2 no campo Espectrômetro de massas, coluna Filamento, conforme o filamento que esteja acionado, vinculado ao arquivo do tune. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.29.</strong> No campo Espectrômetro de massas, coluna Voltagem do Repeller , registrar o valor da voltagem do Repeller, em V, disponível no relatório do tune em Ion Source . Para os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.30.</strong> No campo Espectrômetro de massas, coluna Max Gain Factor , registrar o valor do parâmetro Max Gain Factor disponível no relatório do tune em Detector . Para os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.31.</strong> Nos dias em que for realizado tune, registrar a voltagem da eletromultiplicadora no campo Espectrômetro de massas, coluna EMV, em V. Para os dias em que não for realizado tune, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.32.</strong> No campo Espectrômetro de massas, Abundância relativa ao m/z 69, coluna m/z 18, registrar a abundância relativa do íon m/z 18 em relação ao m/z 69 disponível no relatório em Diagnostic Information, indicativa de umidade na fonte, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.33.</strong> No campo Espectrômetro de massas, Abundância relativa ao m/z 69, coluna m/z 28, registrar a abundância relativa do íon m/z 28 em relação ao m/z 69, disponível no relatório em Diagnostic Information, indicativa de N2 (vazamento) na fonte, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.34.</strong> No campo Espectrômetro de massas, Abundância relativa ao m/z 69, coluna m/z 32, registrar a abundância relativa do íon m/z 32 em relação ao m/z 69, disponível no relatório em Diagnostic Information, indicativa de O2 (vazamento) na fonte, para os dias em que for efetuado tune. Para os demais dias, deixar a célula em branco.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.35.</strong> No campo Número de injeções, registrar o número de injeções feitas no dia. Para os dias em que não for feita nenhuma injeção, preencher com 0 (zero).</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.36.</strong> O campo Número de injeções com o mesmo liner só pode ser preenchido na primeira linha do Livro de registro, resgatando o histórico de injeções de um Livro de registros anterior ao novo livro aberto. Para as demais linhas, ele fará a contagem do total de injeções feitas usando um mesmo liner. É indicativo da necessidade de troca do liner.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>2.37.</strong> Na coluna Observações, registrar textualmente quaisquer informações relevantes em relação à manutenção e/ou às injeções efetuadas.</p>
+
+          <h3 style="margin-top: 24px; margin-bottom: 12px; color: var(--teal); border-bottom: 1px solid var(--border); padding-bottom: 8px;">3. Aba Registro de Manutenção Corretiva</h3>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.1.</strong> Na coluna Data, registrar a data da identificação do problema no formato DD/MM/AAAA.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.2.</strong> Na coluna Responsável, registrar as iniciais do nome do responsável pela condução da manutenção corretiva.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.3.</strong> Na coluna Supervisão, registrar as iniciais do nome do supervisor do setor.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.4.</strong> Na coluna Descrição do problema e possíveis causas, descrever a falha apresentada pelo sistema e possíveis causas para sua ocorrência.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.5.</strong> Na coluna Procedimentos de manutenção/correção, descrever as ações corretivas tomadas para solução do problema.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.6.</strong> Na coluna Resultado da manutenção/correção, descrever o procedimento de verificação da eficácia da ação corretiva e seu resultado.</p>
+          <p style="margin-bottom: 12px; color: var(--label);"><strong>3.7.</strong> Na coluna Observações, registrar textualmente quaisquer informações relevantes sobre o problema do sistema e/ou a ação corretiva.</p>
+
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed var(--border); text-align: center; color: var(--muted); font-size: 12px;">
+            Instruções de uso do Livro de Registro Eletrônico dos Sistemas CG-QqQ do LAGOA<br>
+            EX.191/2020 V.00 de 14/02/2020<br>
+            UFRJ - INSTITUTO DE QUÍMICA<br>
+            LABORATÓRIO DE APOIO AO DESENVOLVIMENTO TECNOLÓGICO<br>
+            Planilha EX.106/2015 V.00 de 19/01/15.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- PDF Modal -->
+  <div id="pdf-overlay">
+    <div class="pdf-modal">
+      <div class="spinner"></div>
+      <h3>Gerando Relatório Anual</h3>
+      <p>Compilando dados operacionais, tune, manutenções e diagnósticos do equipamento 12E797...</p>
+      <div id="pdf-status" style="font-size:11px;color:var(--teal);margin-top:8px">Preparando páginas…</div>
+    </div>
+  </div>
+
+  <script src="js/script.js"></script>
+</body>
+
+</html>
