@@ -23,6 +23,9 @@ backup/
 old/
 *.bak
 *.tmp
+*.pdf
+*.sqlite
+*.png
 
 # Logs do NPM
 npm-debug.log*

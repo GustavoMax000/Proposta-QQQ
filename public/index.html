@@ -211,7 +211,7 @@
               <div id="progress-liner-bar" class="progress-fill fill-ok" style="width:0%"></div>
             </div>
           </div>
-          <div class="progress-bar-wrap">
+          <!--<div class="progress-bar-wrap">
             <div class="progress-header">
               <span class="progress-title">Septo (injeções)</span>
               <span class="progress-val" style="color:var(--green)">— / 150 est.</span>
@@ -219,8 +219,8 @@
             <div class="progress-track">
               <div class="progress-fill fill-ok" style="width:0%"></div>
             </div>
-          </div>
-          <div class="progress-bar-wrap">
+          </div>-->
+          <!--<div class="progress-bar-wrap">
             <div class="progress-header">
               <span class="progress-title">Filamento 1 (horas est.)</span>
               <span class="progress-val" style="color:var(--green)">— / 2000h</span>
@@ -228,7 +228,7 @@
             <div class="progress-track">
               <div class="progress-fill fill-ok" style="width:0%"></div>
             </div>
-          </div>
+          </div>-->
           <div class="progress-bar-wrap">
             <div class="progress-header">
               <span class="progress-title">Coluna 1D (cortes realizados)</span>
@@ -238,7 +238,7 @@
               <div class="progress-fill fill-teal" style="width:0%"></div>
             </div>
           </div>
-          <div class="progress-bar-wrap">
+          <!--<div class="progress-bar-wrap">
             <div class="progress-header">
               <span class="progress-title">Cilindro He (estimado)</span>
               <span class="progress-val" style="color:var(--green)">~70% restante</span>
@@ -246,8 +246,8 @@
             <div class="progress-track">
               <div class="progress-fill fill-ok" style="width:70%"></div>
             </div>
-          </div>
-          <div class="progress-bar-wrap" style="margin-bottom:0">
+          </div>-->
+          <!--<div class="progress-bar-wrap" style="margin-bottom:0">
             <div class="progress-header">
               <span class="progress-title">Óleo Bomba Foreline</span>
               <span class="progress-val" style="color:var(--amber)">Verificar em breve</span>
@@ -255,7 +255,7 @@
             <div class="progress-track">
               <div class="progress-fill fill-warn" style="width:55%"></div>
             </div>
-          </div>
+          </div>-->
         </div>
 
         <!-- Leakage panel -->
@@ -381,7 +381,15 @@
         </div>
       </div>
       <div class="card mb24">
-        <div class="card-title">Tabela de Registros de Tune</div>
+        <div
+          style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+          <div class="card-title" style="margin:0;">Tabela de Registros de Tune</div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; color:var(--muted);">Buscar por Data:</span>
+            <input type="text" id="tune-search-date" placeholder="Ex: 10/02/2022" oninput="onTuneSearchInput()"
+              style="padding:6px 12px; border-radius:6px; background:var(--bg3); border:1px solid var(--border); color:var(--text); font-size:12px; width:180px;">
+          </div>
+        </div>
         <table class="data-table">
           <thead>
             <tr>
@@ -403,6 +411,8 @@
           <tbody id="tune-table-body">
           </tbody>
         </table>
+        <div id="tune-pagination"
+          style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:16px;"></div>
       </div>
       <div class="grid-3">
         <div class="card">
@@ -598,7 +608,7 @@
           <div class="form-grid">
             <div class="form-field">
               <label>Data</label>
-              <input type="date" id="log-date">
+              <input type="date" id="log-date" disabled>
             </div>
             <div class="form-field">
               <label>Operador (iniciais)</label>
@@ -606,15 +616,14 @@
             </div>
             <div class="form-field">
               <label>Tamb (°C)</label>
-              <input type="number" id="log-temp" placeholder="23.0" step="0.1">
+              <input type="number" id="log-temp" placeholder="23.0" value="23" step="0.1">
             </div>
             <div class="form-field">
               <label>Sistema</label>
               <select id="log-sistema">
-                <option value="">— Normal —</option>
-                <option value="DESL">DESL</option>
-                <option value="REL">REL</option>
-                <option value="DESL/REL">DESL/REL</option>
+                <option value="">— Selecione —</option>
+                <option value="Sim">Sim</option>
+                <option value="Não">Não</option>
               </select>
             </div>
             <div class="form-field">
@@ -697,7 +706,7 @@
             <div class="form-grid" style="grid-template-columns:1fr 1fr">
               <div class="form-field">
                 <label>Nº do Tune</label>
-                <input type="number" id="log-tunenum" placeholder="—">
+                <input type="number" id="log-tunenum" placeholder="—" readonly>
               </div>
               <div class="form-field">
                 <label>Filamento</label>
@@ -1132,6 +1141,23 @@
         style="margin-top:24px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:16px;">
         <button class="btn btn-danger" id="btn-delete-corrective">Excluir Registro</button>
         <button class="btn btn-outline" onclick="closeCorrectiveModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALHES DE TUNE E REGISTRO DIÁRIO -->
+  <div class="modal-overlay" id="tune-detail-modal">
+    <div class="modal-content" style="max-width:850px; width:90%">
+      <div class="modal-header">
+        <div class="modal-title" id="tune-det-title">Detalhes do Tune & Registro Diário</div>
+        <button class="modal-close" onclick="closeTuneDetailModal()">×</button>
+      </div>
+      <div id="tune-det-content" style="font-size:14px; line-height:1.5;">
+        <!-- Preenchido via JS -->
+      </div>
+      <div
+        style="margin-top:24px; display:flex; justify-content:flex-end; border-top:1px solid var(--border); padding-top:16px;">
+        <button class="btn btn-outline" onclick="closeTuneDetailModal()">Fechar</button>
       </div>
     </div>
   </div>

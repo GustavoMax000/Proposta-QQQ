@@ -283,31 +283,123 @@ function initCharts() {
 }
 
 // =====================================================================
-// TUNE TABLE
+// TUNE TABLE WITH SEARCH & PAGINATION
 // =====================================================================
+let tuneCurrentPage = 1;
+
 function renderTuneTable() {
   const tbody = document.getElementById('tune-table-body');
-  tbody.innerHTML = tuneData.map(t => {
-    const emvClass = t.emv > 2200 ? 'alert' : t.emv > 1800 ? 'warn' : 'ok';
-    const m18Class = t.m18 > 10 ? 'alert' : t.m18 > 7 ? 'warn' : 'ok';
-    const m28Class = t.m28 > 10 ? 'alert' : t.m28 > 7 ? 'warn' : 'ok';
-    const m32Class = t.m32 > 2 ? 'alert' : t.m32 > 1.5 ? 'warn' : 'ok';
-    return `<tr>
-      <td class="num">#${t.num}</td>
-      <td class="num">${t.date}</td>
-      <td>${t.op}</td>
-      <td class="num">Fil. ${t.fil}</td>
-      <td class="num ${emvClass}">${t.emv}</td>
-      <td class="num">${t.tint}</td>
-      <td class="num ok">${t.m69}</td>
-      <td class="num ok">${t.m219}</td>
-      <td class="num ok">${t.m502}</td>
-      <td class="num ${m18Class}">${t.m18}</td>
-      <td class="num ${m28Class}">${t.m28}</td>
-      <td class="num ${m32Class}">${t.m32}</td>
-      <td><span class="metric-badge badge-ok">OK</span></td>
-    </tr>`;
-  }).join('');
+  if (!tbody) return;
+
+  // 1. Sort descending by num (or Nº Tune)
+  let sorted = [...tuneData].sort((a, b) => b.num - a.num);
+
+  // 2. Filter by search query (date)
+  const query = (document.getElementById('tune-search-date')?.value || '').trim().toLowerCase();
+  if (query) {
+    sorted = sorted.filter(t => t.date.toLowerCase().includes(query));
+  }
+
+  // 3. Pagination limits
+  const totalItems = sorted.length;
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+  if (tuneCurrentPage > totalPages) {
+    tuneCurrentPage = totalPages;
+  }
+  if (tuneCurrentPage < 1) {
+    tuneCurrentPage = 1;
+  }
+
+  const startIndex = (tuneCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedItems = sorted.slice(startIndex, endIndex);
+
+  // 4. Render rows
+  if (paginatedItems.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; color:var(--muted); padding:20px;">Nenhum registro de Tune localizado para a busca.</td></tr>`;
+  } else {
+    tbody.innerHTML = paginatedItems.map(t => {
+      const emvClass = t.emv > 2200 ? 'alert' : t.emv > 1800 ? 'warn' : 'ok';
+      const m18Class = t.m18 > 10 ? 'alert' : t.m18 > 7 ? 'warn' : 'ok';
+      const m28Class = t.m28 > 10 ? 'alert' : t.m28 > 7 ? 'warn' : 'ok';
+      const m32Class = t.m32 > 2 ? 'alert' : t.m32 > 1.5 ? 'warn' : 'ok';
+      
+      // Status dinâmico
+      let statusClass = 'badge-ok';
+      let statusLabel = 'OK';
+      if (emvClass === 'alert' || m18Class === 'alert' || m28Class === 'alert' || m32Class === 'alert') {
+        statusClass = 'badge-alert';
+        statusLabel = 'CRÍTICO';
+      } else if (emvClass === 'warn' || m18Class === 'warn' || m28Class === 'warn' || m32Class === 'warn') {
+        statusClass = 'badge-warn';
+        statusLabel = 'ATENÇÃO';
+      }
+
+      return `<tr style="cursor:pointer" onclick="openTuneDetailModal(${t.num})">
+        <td class="num">#${t.num}</td>
+        <td class="num">${t.date}</td>
+        <td>${t.op}</td>
+        <td class="num">Fil. ${t.fil}</td>
+        <td class="num ${emvClass}">${t.emv}</td>
+        <td class="num">${t.tint}</td>
+        <td class="num ok">${t.m69}</td>
+        <td class="num ok">${t.m219}</td>
+        <td class="num ok">${t.m502}</td>
+        <td class="num ${m18Class}">${t.m18}</td>
+        <td class="num ${m28Class}">${t.m28}</td>
+        <td class="num ${m32Class}">${t.m32}</td>
+        <td><span class="metric-badge ${statusClass}">${statusLabel}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // 5. Render Pagination Controls
+  const pagDiv = document.getElementById('tune-pagination');
+  if (!pagDiv) return;
+
+  if (totalPages <= 1) {
+    pagDiv.innerHTML = '';
+    return;
+  }
+
+  let pagHTML = '';
+  
+  // Previous button
+  if (tuneCurrentPage > 1) {
+    pagHTML += `<button class="btn btn-outline" style="padding:4px 10px; font-size:11px;" onclick="changeTunePage(${tuneCurrentPage - 1})">◀ Anterior</button>`;
+  } else {
+    pagHTML += `<button class="btn btn-outline" style="padding:4px 10px; font-size:11px; opacity:0.4; cursor:not-allowed;" disabled>◀ Anterior</button>`;
+  }
+
+  // Page Numbers (Google Style)
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === tuneCurrentPage) {
+      pagHTML += `<button class="btn btn-primary" style="padding:4px 10px; font-size:11px; min-width:30px;">${i}</button>`;
+    } else {
+      pagHTML += `<button class="btn btn-outline" style="padding:4px 10px; font-size:11px; min-width:30px;" onclick="changeTunePage(${i})">${i}</button>`;
+    }
+  }
+
+  // Next button
+  if (tuneCurrentPage < totalPages) {
+    pagHTML += `<button class="btn btn-outline" style="padding:4px 10px; font-size:11px;" onclick="changeTunePage(${tuneCurrentPage + 1})">Próximo ▶</button>`;
+  } else {
+    pagHTML += `<button class="btn btn-outline" style="padding:4px 10px; font-size:11px; opacity:0.4; cursor:not-allowed;" disabled>Próximo ▶</button>`;
+  }
+
+  pagDiv.innerHTML = pagHTML;
+}
+
+function changeTunePage(page) {
+  tuneCurrentPage = page;
+  renderTuneTable();
+}
+
+function onTuneSearchInput() {
+  tuneCurrentPage = 1; // Reset to page 1 on new search
+  renderTuneTable();
 }
 
 // =====================================================================
@@ -388,13 +480,19 @@ function renderLogsList() {
 
 async function saveLog() {
   const date = document.getElementById('log-date').value;
-  const op = document.getElementById('log-op').value || '—';
+  const op = document.getElementById('log-op').value.trim();
+  const temp = document.getElementById('log-temp').value.trim();
+  const sistema = document.getElementById('log-sistema').value;
+  
+  if (!op) { alert('O campo Operador (iniciais) é obrigatório.'); return; }
+  if (!temp) { alert('O campo Temperatura Ambiente (Tamb) é obrigatório.'); return; }
+  if (!sistema) { alert('O campo Sistema é obrigatório.'); return; }
+
   const psi = document.getElementById('log-psi').value;
   const inj = document.getElementById('log-inj').value;
   const obs = document.getElementById('log-obs').value;
   
   // Novos campos
-  const sistema = document.getElementById('log-sistema').value;
   const he = document.getElementById('log-he').value;
   const limpinj = document.getElementById('log-limpinj').value;
   const septo = document.getElementById('log-septo').value;
@@ -408,10 +506,14 @@ async function saveLog() {
   
   const entry = { 
     date, op, psi, inj, obs, 
-    sistema, he, limpinj, septo, liner, col_model, corte, trpi, limpfonte 
+    sistema, he, limpinj, septo, liner, col_model, corte, trpi, limpfonte,
+    tamb: parseFloat(temp)
   };
   
   const tuneNum = document.getElementById('log-tunenum').value;
+  const emvVal = document.getElementById('log-emv').value;
+  const filVal = document.getElementById('log-fil').value;
+  const hasTune = tuneNum && (emvVal || filVal);
 
   try {
     const response = await fetch('/api/logs', {
@@ -423,7 +525,7 @@ async function saveLog() {
     savedLogs = result.savedLogs;
     renderLogsList();
 
-    if (tuneNum) {
+    if (hasTune) {
       const tuneEntry = {
         num: parseInt(tuneNum),
         date: date,
@@ -448,7 +550,7 @@ async function saveLog() {
     }
 
     // clear
-    ['log-op', 'log-psi', 'log-inj', 'log-obs', 'log-corte', 'log-trpi', 'log-emv', 'log-18', 'log-28', 'log-32', 'log-69', 'log-219', 'log-502', 'log-tinterf', 'log-col-model', 'log-tunenum'].forEach(id => {
+    ['log-op', 'log-psi', 'log-obs', 'log-corte', 'log-trpi', 'log-emv', 'log-18', 'log-28', 'log-32', 'log-69', 'log-219', 'log-502', 'log-tinterf', 'log-col-model'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     ['log-sistema', 'log-he', 'log-limpinj', 'log-septo', 'log-liner', 'log-col', 'log-limpfonte', 'log-fil'].forEach(id => {
@@ -459,6 +561,9 @@ async function saveLog() {
     renderStatusGeral();
     renderMaintenanceSchedule();
     renderColumnHistory();
+    
+    // Atualiza campos autoincrementados
+    updateAutoIncrementedFields();
     
     alert('Registro salvo com sucesso!');
   } catch (e) {
@@ -480,35 +585,74 @@ async function generatePDF() {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const W = 210, H = 297;
 
-    // Color helpers
-    const hex2rgb = hex => ({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
-    const teal = hex2rgb('#0d9488'), amber = hex2rgb('#d97706'), red = hex2rgb('#dc2626'), green = hex2rgb('#10b981');
+    // ── Light-theme color palette (mirrors CSS :root variables) ──────────
+    const hex2rgb = hex => ({ r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) });
+    // Primary
+    const teal    = hex2rgb('#0d9488'); // --teal
+    const tealDim = hex2rgb('#0f766e'); // --teal-dim
+    // State colors
+    const amber   = hex2rgb('#d97706'); // --amber
+    const red     = hex2rgb('#dc2626'); // --red
+    const green   = hex2rgb('#059669'); // --green
+    const blue    = hex2rgb('#2563eb'); // --blue
+    // Backgrounds
+    const bgPage  = [248, 250, 252]; // --bg  #f8fafc
+    const bgCard  = [255, 255, 255]; // --bg2 #ffffff
+    const bgAlt   = [241, 245, 249]; // --bg3 #f1f5f9
+    const bgHead  = [240, 253, 250]; // teal-tinted header strip
+    // Text
+    const txtMain = [15,  23,  42];  // --text  #0f172a
+    const txtMuted= [100, 116, 139]; // --muted #64748b
+    const txtLabel= [71,  85, 105];  // --label #475569
+    // Border
+    const borderC = [226, 232, 240]; // --border #e2e8f0
 
     // ---- PAGE 1: COVER ----
     status.textContent = 'Gerando capa do relatório...';
     await sleep(200);
-    doc.setFillColor(11, 15, 26); doc.rect(0, 0, W, H, 'F');
-    doc.setFillColor(17, 24, 39); doc.rect(0, 0, W, 60, 'F');
+    // Page background
+    doc.setFillColor(...bgPage); doc.rect(0, 0, W, H, 'F');
+    // Header strip — teal gradient simulation
+    doc.setFillColor(teal.r, teal.g, teal.b); doc.rect(0, 0, W, 52, 'F');
+    // Subtle accent bar below header
+    doc.setFillColor(tealDim.r, tealDim.g, tealDim.b); doc.rect(0, 52, W, 3, 'F');
 
-    // Title block
+    // Title block — white text over teal header
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-    doc.setTextColor(teal.r, teal.g, teal.b);
-    doc.text('RELATÓRIO ANUAL DE ACOMPANHAMENTO DE EQUIPAMENTO', 105, 20, { align: 'center' });
-    doc.text('MÉTODO 5.389 · TRIAGEM IX · CÓD. EQUIP. 12E797', 105, 27, { align: 'center' });
-    doc.setFontSize(28); doc.setTextColor(226, 232, 240);
-    doc.text('TSQ 9610 GCxGC–MS/MS', 105, 42, { align: 'center' });
-    doc.setFontSize(12); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text('Thermo Scientific · Triple Quadrupole GC-MS · Ionização EI', 105, 52, { align: 'center' });
+    doc.setTextColor(255, 255, 255);
+    doc.text('RELATÓRIO ANUAL DE ACOMPANHAMENTO DE EQUIPAMENTO', 105, 18, { align: 'center' });
+    doc.text('MÉTODO 5.389 · TRIAGEM IX · CÓD. EQUIP. 12E797', 105, 25, { align: 'center' });
+    doc.setFontSize(26); doc.setTextColor(255, 255, 255);
+    doc.text('TSQ 9610 GCxGC–MS/MS', 105, 40, { align: 'center' });
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(209, 250, 229);
+    doc.text('Thermo Scientific · Triple Quadrupole GC-MS · Ionização EI', 105, 49, { align: 'center' });
+
+    // Summary KPIs — computed from real data
+    const yr = new Date().getFullYear();
+    const toISO = s => {
+      if (!s) return '';
+      s = s.trim();
+      if (s.includes('/')) { const p = s.split('/'); return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; }
+      return s;
+    };
+    const tunesYr = tuneData.filter(t => toISO(t.date).startsWith(String(yr)));
+    const logsYr  = savedLogs.filter(l => toISO(l.date).startsWith(String(yr)));
+    const corrYr  = correctiveRecords.filter(r => toISO(r.date).startsWith(String(yr)));
+
+    const totalInj  = logsYr.reduce((s,l) => s + (parseInt(l.inj)||0), 0);
+    const limpFonte = logsYr.filter(l => l.limpfonte === 'SIM').length;
+    const lastTune  = tunesYr.length > 0 ? tunesYr[tunesYr.length - 1] : null;
+    const lastEMV   = lastTune ? lastTune.emv : '—';
+    const emvStatus = lastTune && lastTune.emv > 2200 ? 'alert' : lastTune && lastTune.emv > 1800 ? 'warn' : 'ok';
 
     // Year badge
-    const yr = new Date().getFullYear();
-    doc.setFillColor(0, 212, 184); doc.roundedRect(75, 65, 60, 18, 3, 3, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(11, 15, 26);
-    doc.text('Ano de Referência: ' + yr, 105, 76, { align: 'center' });
+    doc.setFillColor(teal.r, teal.g, teal.b); doc.roundedRect(75, 60, 60, 14, 3, 3, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(255, 255, 255);
+    doc.text('Ano de Referência: ' + yr, 105, 69, { align: 'center' });
 
-    // Info table
-    const infoY = 92;
+    // Info table (equipment static data)
+    const infoY = 82;
     const rows = [
       ['Equipamento', 'TSQ 9610 GCxGC–MS/MS'], ['Código', '12E797'],
       ['Fabricante', 'Thermo Fisher Scientific'], ['Método', '5.389 · Triagem IX'],
@@ -517,40 +661,43 @@ async function generatePDF() {
       ['Documento', 'TSQ 9610 Hardware Manual Rev. B · Jul 2024'],
       ['Data do relatório', new Date().toLocaleDateString('pt-BR')],
     ];
-    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(teal.r, teal.g, teal.b);
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(teal.r, teal.g, teal.b);
     doc.text('IDENTIFICAÇÃO DO EQUIPAMENTO', 20, infoY);
-    doc.setDrawColor(30, 47, 71); doc.setLineWidth(.3); doc.line(20, infoY + 2, 190, infoY + 2);
+    doc.setDrawColor(...borderC); doc.setLineWidth(.4); doc.line(20, infoY + 2, 190, infoY + 2);
     rows.forEach((r, i) => {
-      const y = infoY + 10 + i * 9;
-      //doc.setFillColor(i%2===0?22,32,50:17,24,39);
-      doc.rect(20, y - 5, 170, 9, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(148, 163, 184);
+      const y = infoY + 10 + i * 8;
+      if (i % 2 === 0) { doc.setFillColor(241,245,249); } else { doc.setFillColor(255,255,255); }
+      doc.rect(20, y - 5, 170, 8, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...txtMuted);
       doc.text(r[0], 24, y);
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(226, 232, 240);
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(...txtMain);
       doc.text(r[1], 90, y);
     });
 
-    // Summary KPIs
-    const sumY = infoY + 105;
+    const sumY = infoY + 100;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(teal.r, teal.g, teal.b);
     doc.text('RESUMO OPERACIONAL ' + yr, 20, sumY);
-    doc.line(20, sumY + 2, 190, sumY + 2);
+    doc.setDrawColor(...borderC); doc.line(20, sumY + 2, 190, sumY + 2);
+
+    const kpiColor = (st) => st === 'ok' ? green : st === 'warn' ? amber : red;
     const kpis = [
-      ['Tunes Realizados', '7', 'ok'], ['Total de Injeções (est.)', '442', 'ok'],
-      ['Injeções no Liner Atual', '342', 'warn'], ['Último EMV', '1842 V', 'ok'],
-      ['Limpezas da Fonte', '1', 'ok'], ['Manutenções Corretivas', '0', 'ok'],
+      [String(tunesYr.length), 'Tunes Realizados', 'ok'],
+      [String(totalInj), 'Total de Injeções', 'ok'],
+      [String(limpFonte), 'Limpezas da Fonte', limpFonte === 0 ? 'warn' : 'ok'],
+      [String(lastEMV) + (lastTune ? ' V' : ''), 'Último EMV', emvStatus],
+      [String(corrYr.length), 'Manutenções Corretivas', corrYr.length > 0 ? 'alert' : 'ok'],
+      [String(logsYr.length), 'Dias Registrados', 'ok'],
     ];
     kpis.forEach((k, i) => {
       const col = i % 3, row = Math.floor(i / 3);
       const bx = 20 + col * 60, by = sumY + 8 + row * 22;
-      const clr = k[2] === 'ok' ? green : k[2] === 'warn' ? amber : red;
-      doc.setFillColor(22, 32, 50); doc.roundedRect(bx, by, 55, 18, 2, 2, 'F');
-      doc.setDrawColor(clr.r, clr.g, clr.b); doc.setLineWidth(.5); doc.roundedRect(bx, by, 55, 18, 2, 2, 'S');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(clr.r, clr.g, clr.b);
-      doc.text(k[1], bx + 27.5, by + 11, { align: 'center' });
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(100, 116, 139);
-      doc.text(k[0], bx + 27.5, by + 16.5, { align: 'center' });
+      const clr = kpiColor(k[2]);
+      doc.setFillColor(...bgCard); doc.roundedRect(bx, by, 55, 18, 2, 2, 'F');
+      doc.setDrawColor(clr.r, clr.g, clr.b); doc.setLineWidth(.6); doc.roundedRect(bx, by, 55, 18, 2, 2, 'S');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(clr.r, clr.g, clr.b);
+      doc.text(k[0], bx + 27.5, by + 11, { align: 'center' });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...txtMuted);
+      doc.text(k[1], bx + 27.5, by + 16.5, { align: 'center' });
     });
 
     // ---- PAGE 2: TUNE DATA ----
@@ -561,34 +708,33 @@ async function generatePDF() {
     doc.setFillColor(17, 24, 39); doc.rect(0, 0, W, 16, 'F');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(teal.r, teal.g, teal.b);
     doc.text('TSQ 9610 · 12E797 · RELATÓRIO ANUAL ' + yr, 20, 10);
-    doc.setTextColor(100, 116, 139); doc.text('HISTÓRICO DE TUNE', 190, 10, { align: 'right' });
+    doc.setTextColor(...txtMuted); doc.text('HISTÓRICO DE TUNE', 190, 10, { align: 'right' });
 
-    doc.setFontSize(14); doc.setTextColor(226, 232, 240);
+    doc.setFontSize(14); doc.setTextColor(...txtMain);
     doc.text('Histórico de Tune — Parâmetros Registrados', 20, 28);
-    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 116, 139);
-    doc.text('Calibrante PFTBA · Ionização EI · ' + tuneData.length + ' tunes realizados em ' + yr, 20, 34);
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...txtMuted);
+    doc.text('Calibrante PFTBA · Ionização EI · ' + tunesYr.length + ' tunes realizados em ' + yr, 20, 34);
 
-    // Table
+    // Table — only current year tunes
     const th = ['Tune', 'Data', 'Operador', 'Fil', 'EMV(V)', 'T.Int(°C)', 'm/z69', 'm/z219', 'm/z502', 'm/z18', 'm/z28', 'm/z32'];
     const cols = [15, 22, 26, 12, 16, 16, 12, 16, 16, 12, 12, 12];
     let tx = 12, ty = 44;
-    doc.setFillColor(26, 34, 53); doc.rect(10, ty - 6, 190, 9, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(0, 212, 184);
+    doc.setFillColor(241,245,249); doc.rect(10, ty - 6, 190, 9, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(teal.r, teal.g, teal.b);
     let cx = tx;
     th.forEach((h, i) => { doc.text(h, cx, ty); cx += cols[i]; });
-    tuneData.forEach((t, ri) => {
+    tunesYr.forEach((t, ri) => {
       ty += 10;
-      //doc.setFillColor(ri%2===0?22,32,50:17,24,39);
-      doc.rect(10, ty - 6, 190, 9, 'F');
+      doc.setFillColor(ri%2===0 ? 248:255, ri%2===0 ? 250:255, ri%2===0 ? 252:255); doc.rect(10, ty - 6, 190, 9, 'F');
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
       const row = ['#' + t.num, t.date, t.op, 'Fil.' + t.fil, '' + t.emv, '' + t.tint, '' + t.m69, '' + t.m219, '' + t.m502, '' + t.m18, '' + t.m28, '' + t.m32];
       cx = tx;
       row.forEach((val, i) => {
-        let clr = [226, 232, 240];
-        if (i === 4 && t.emv > 2200) clr = [amber.r, amber.g, amber.b];
-        if (i === 9 && t.m18 > 7) clr = [amber.r, amber.g, amber.b];
-        if (i === 10 && t.m28 > 7) clr = [amber.r, amber.g, amber.b];
-        if (i === 11 && t.m32 > 1.5) clr = [red.r, red.g, red.b];
+        let clr = [...txtMain];
+        if (i === 4 && t.emv > 2200) clr = [amber.r,amber.g,amber.b];
+        if (i === 9 && t.m18 > 7) clr = [amber.r,amber.g,amber.b];
+        if (i === 10 && t.m28 > 7) clr = [amber.r,amber.g,amber.b];
+        if (i === 11 && t.m32 > 1.5) clr = [red.r,red.g,red.b];
         doc.setTextColor(...clr);
         doc.text(val, cx, ty); cx += cols[i];
       });
@@ -597,7 +743,7 @@ async function generatePDF() {
     // Legend
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(teal.r, teal.g, teal.b);
     doc.text('LIMITES DE REFERÊNCIA', 20, ty);
-    doc.line(20, ty + 2, 190, ty + 2);
+    doc.setDrawColor(...borderC); doc.line(20, ty + 2, 190, ty + 2);
     const limits = [
       'EMV — Faixa normal: 1200 a 2500 V. Acima de 2500 V: considerar substituição do electron multiplier.',
       'm/z 18 (umidade) — Limite: < 10% relativo ao m/z 69. Valores altos indicam contaminação da fonte ou vazamento.',
@@ -606,7 +752,7 @@ async function generatePDF() {
       'm/z 219 e m/z 502 — Rastreiam a qualidade do tune com o calibrante PFTBA.',
     ];
     limits.forEach((l, i) => {
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(148, 163, 184);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...txtMuted);
       doc.text('•  ' + l, 20, ty + 10 + i * 8, { maxWidth: 170 });
     });
 
@@ -614,26 +760,31 @@ async function generatePDF() {
     status.textContent = 'Gerando plano de manutenção...';
     await sleep(200);
     doc.addPage();
-    doc.setFillColor(11, 15, 26); doc.rect(0, 0, W, H, 'F');
-    doc.setFillColor(17, 24, 39); doc.rect(0, 0, W, 16, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(teal.r, teal.g, teal.b);
+    doc.setFillColor(248,250,252); doc.rect(0, 0, W, H, 'F');
+    doc.setFillColor(teal.r,teal.g,teal.b); doc.rect(0, 0, W, 16, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
     doc.text('TSQ 9610 · 12E797 · RELATÓRIO ANUAL ' + yr, 20, 10);
-    doc.setTextColor(100, 116, 139); doc.text('MANUTENÇÃO PREVENTIVA', 190, 10, { align: 'right' });
-    doc.setFontSize(14); doc.setTextColor(226, 232, 240);
+    doc.setTextColor(...txtMuted); doc.text('MANUTENÇÃO PREVENTIVA', 190, 10, { align: 'right' });
+    doc.setFontSize(14); doc.setTextColor(...txtMain);
     doc.text('Manutenção Preventiva — Plano e Execução', 20, 28);
 
+    // Build maintenance items dynamically from real savedLogs data
+    const lastOf = (field) => { const l = [...logsYr].reverse().find(x => x[field] === 'SIM'); return l ? l.date : 'Não registrado'; };
+    const septoCnt = logsYr.reduce((s,l) => s + (parseInt(l.inj)||0), 0);
+    const totalCuts = logsYr.reduce((s,l) => s + (parseFloat(l.corte)||0), 0);
+    const lastSep = lastOf('septo'); const lastLin = lastOf('liner'); const lastFon = lastOf('limpfonte'); const lastHe = lastOf('he');
+    const lastTuneDate = tunesYr.length > 0 ? tunesYr[tunesYr.length-1].date : 'Não registrado';
     const maintItems = [
-      ['Troca de Septo', '100–200 injeções', '15/11/2022', 'OK', 'Realizado preventivamente. Operação normal após troca.'],
-      ['Troca de Liner', '400–800 injeções', '03/02/2022', 'MONITORAR', '342 injeções acumuladas. Substituição prevista em breve.'],
-      ['Corte de Coluna (1D)', 'Por necessidade', '05/08/2022', 'OK', '3 cortes de 3 cm realizados ao longo de ' + yr + '.'],
-      ['Limpeza da Fonte de Íons', 'Trimestral / m/z18>10%', '22/09/2022', 'OK', 'Ion source cartridge removido e limpo. Lentes e volume iônico lavados com metanol HPLC.'],
-      ['Troca Cilindro He', 'Por pressão', '18/05/2022', 'OK', 'Substituição realizada. Pressão verificada em 14 psi no injetor.'],
-      ['Verificação Óleo Foreline', 'Mensal', 'Não registrado', 'ATENÇÃO', 'Registro não encontrado no caderno. Verificar imediatamente.'],
-      ['Tune EI do Sistema', 'Semanal / pré-corrida', '10/11/2022', 'OK', '7 tunes realizados em ' + yr + '. Todos dentro dos parâmetros.'],
+      ['Troca de Septo', '100–200 injeções', lastSep, lastSep === 'Não registrado' ? 'ATENÇÃO' : 'OK', lastSep !== 'Não registrado' ? 'Última troca: ' + lastSep : 'Nenhum registro de troca de septo no ano.'],
+      ['Troca de Liner', '400–800 injeções', lastLin, septoCnt > 600 ? 'MONITORAR' : 'OK', septoCnt + ' injeções acumuladas no ano. Limite recomendado: 600.'],
+      ['Corte de Coluna', 'Por necessidade', totalCuts > 0 ? logsYr.filter(l=>parseFloat(l.corte)>0).slice(-1)[0]?.date || '—' : '—', 'OK', totalCuts > 0 ? totalCuts.toFixed(1) + ' cm total cortados em ' + yr + '.' : 'Nenhum corte registrado em ' + yr + '.'],
+      ['Limpeza da Fonte de Íons', 'Trimestral / m/z18>10%', lastFon, lastFon === 'Não registrado' ? 'ATENÇÃO' : 'OK', lastFon !== 'Não registrado' ? 'Limpeza realizada em ' + lastFon + '.' : 'Nenhuma limpeza de fonte registrada em ' + yr + '.'],
+      ['Troca Cilindro He', 'Por pressão', lastHe, lastHe === 'Não registrado' ? 'ATENÇÃO' : 'OK', lastHe !== 'Não registrado' ? 'Troca realizada em ' + lastHe + '.' : 'Nenhum registro de troca de He em ' + yr + '.'],
+      ['Tune EI do Sistema', 'Semanal / pré-corrida', lastTuneDate, tunesYr.length === 0 ? 'ATENÇÃO' : 'OK', tunesYr.length + ' tunes realizados em ' + yr + '. Último: ' + lastTuneDate + '.'],
     ];
     let my = 40;
-    doc.setFillColor(26, 34, 53); doc.rect(10, my, 190, 10, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(0, 212, 184);
+    doc.setFillColor(241,245,249); doc.rect(10, my, 190, 10, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(teal.r,teal.g,teal.b);
     doc.text('COMPONENTE', 14, my + 6.5);
     doc.text('FREQUÊNCIA', 55, my + 6.5);
     doc.text('ÚLTIMA REALIZ.', 95, my + 6.5);
@@ -641,11 +792,10 @@ async function generatePDF() {
     doc.text('OBSERVAÇÕES', 150, my + 6.5);
     maintItems.forEach((m, i) => {
       my += 10;
-      //doc.setFillColor(i%2===0?22,32,50:17,24,39);
-      doc.rect(10, my, 190, 20, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(226, 232, 240);
+      doc.setFillColor(248,250,252); doc.rect(10, my, 190, 20, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...txtMain);
       doc.text(m[0], 14, my + 5);
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(148, 163, 184);
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(...txtLabel);
       doc.text(m[1], 55, my + 5, { maxWidth: 38 });
       doc.text(m[2], 95, my + 5);
       const sc = m[3] === 'OK' ? green : m[3] === 'MONITORAR' ? amber : red;
@@ -660,38 +810,46 @@ async function generatePDF() {
     status.textContent = 'Compilando guia de diagnósticos...';
     await sleep(200);
     doc.addPage();
-    doc.setFillColor(11, 15, 26); doc.rect(0, 0, W, H, 'F');
-    doc.setFillColor(17, 24, 39); doc.rect(0, 0, W, 16, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(teal.r, teal.g, teal.b);
+    doc.setFillColor(248,250,252); doc.rect(0, 0, W, H, 'F');
+    doc.setFillColor(teal.r,teal.g,teal.b); doc.rect(0, 0, W, 16, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
     doc.text('TSQ 9610 · 12E797 · RELATÓRIO ANUAL ' + yr, 20, 10);
-    doc.setTextColor(100, 116, 139); doc.text('DIAGNÓSTICO E OCORRÊNCIAS', 190, 10, { align: 'right' });
-    doc.setFontSize(14); doc.setTextColor(226, 232, 240);
+    doc.setTextColor(...txtMuted); doc.text('DIAGNÓSTICO E OCORRÊNCIAS', 190, 10, { align: 'right' });
+    doc.setFontSize(14); doc.setTextColor(...txtMain);
     doc.text('Diagnósticos e Ocorrências — ' + yr, 20, 28);
-    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 116, 139);
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...txtMuted);
     doc.text('Baseado no TSQ 9610 Hardware Manual (1R120622-0003 Rev. B) e User Guide (1R120622-0002 Rev. B)', 20, 35);
 
-    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(16, 185, 129);
-    doc.text('✓  Sem ocorrências de manutenção corretiva registradas para o ano de ' + yr + '.', 20, 48);
-    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(148, 163, 184);
-    doc.text('O sistema operou dentro dos parâmetros esperados ao longo de ' + yr + '. Nenhuma falha crítica foi registrada no', 20, 56);
-    doc.text('Caderno de Manutenção Corretiva. Todos os tunes realizados passaram nos critérios de aceitação.', 20, 62);
+    // Page 4 — Diagnostics with real data
+    if (corrYr.length === 0) {
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(16, 185, 129);
+      doc.text('Sem ocorrencias de manutencao corretiva registradas para o ano de ' + yr + '.', 20, 48);
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(148, 163, 184);
+      doc.text('O sistema operou dentro dos parametros esperados. ' + tunesYr.length + ' tunes realizados. Total de ' + totalInj + ' injec. registradas.', 20, 56);
+    } else {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(amber.r, amber.g, amber.b);
+      doc.text(corrYr.length + ' ocorrencia(s) de manutencao corretiva registrada(s) em ' + yr + '.', 20, 48);
+    }
 
+    // Dynamic attention points derived from real data
     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(teal.r, teal.g, teal.b);
-    doc.text('PONTOS DE ATENÇÃO PARA ' + (yr + 1), 20, 78);
+    doc.text('PONTOS DE ATENCAO PARA ' + (yr + 1), 20, 78);
     doc.line(20, 80, 190, 80);
-    const atencoes = [
-      ['⚠', 'Liner com 342 injeções acumuladas — substituir antes de atingir 400 injeções para evitar contaminação do injetor.', [amber.r, amber.g, amber.b]],
-      ['⚠', 'Registro de verificação do óleo da bomba foreline não localizado. Realizar verificação e registrar imediatamente.', [amber.r, amber.g, amber.b]],
-      ['ℹ', 'EMV em 1842 V (Tune #7). Tendência de crescimento gradual observada. Monitorar — limite de ação: 2500 V.', [100, 116, 139]],
-      ['ℹ', 'Considerar limpeza preventiva da fonte de íons no primeiro trimestre de 2023 (última limpeza: set/2022).', [100, 116, 139]],
-      ['✓', 'Sistema de vácuo íntegro: m/z 28 = 4.8% e m/z 32 = 0.9% — ambos abaixo dos limites de aceitação.', [16, 185, 129]],
-    ];
+    const atencoes = [];
+    if (septoCnt > 600) atencoes.push(['!', 'Liner com ' + septoCnt + ' injecoes acumuladas — substituir antes do proximo uso.', [amber.r, amber.g, amber.b]]);
+    if (lastTune && lastTune.emv > 1800) atencoes.push(['i', 'EMV em ' + lastTune.emv + ' V (Tune #' + lastTune.num + '). Monitorar — limite: 2500 V.', [100, 116, 139]]);
+    const lastM18 = lastTune ? lastTune.m18 : 0; const lastM32 = lastTune ? lastTune.m32 : 0;
+    if (lastM18 > 7) atencoes.push(['!', 'm/z 18 = ' + lastM18 + '% no ultimo tune. Verificar umidade e fonte de ions.', [amber.r, amber.g, amber.b]]);
+    if (lastM32 > 1.5) atencoes.push(['!', 'm/z 32 = ' + lastM32 + '% no ultimo tune — risco de dano ao filamento. Investigar vazamento imediatamente.', [red.r, red.g, red.b]]);
+    if (limpFonte === 0) atencoes.push(['!', 'Nenhuma limpeza da fonte de ions registrada em ' + yr + '. Agendar para 1T/' + (yr+1) + '.', [amber.r, amber.g, amber.b]]);
+    if (atencoes.length === 0) atencoes.push(['v', 'Sistema dentro dos parametros em ' + yr + '. Nenhum ponto critico detectado.', [16, 185, 129]]);
     let ay = 88;
     atencoes.forEach(a => {
-      doc.setFillColor(22, 32, 50); doc.roundedRect(18, ay - 5, 174, 14, 2, 2, 'F');
+      doc.setFillColor(248,250,252); doc.roundedRect(18, ay - 5, 174, 14, 2, 2, 'F');
+      doc.setDrawColor(a[2][0],a[2][1],a[2][2]); doc.setLineWidth(.4); doc.roundedRect(18, ay - 5, 174, 14, 2, 2, 'S');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(a[2][0], a[2][1], a[2][2]);
       doc.text(a[0], 23, ay + 2.5);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...txtMuted);
       doc.text(a[1], 30, ay + 2.5, { maxWidth: 158 });
       ay += 18;
     });
@@ -700,13 +858,13 @@ async function generatePDF() {
     status.textContent = 'Gerando resumo anual e registros corretivos...';
     await sleep(200);
     doc.addPage();
-    doc.setFillColor(11, 15, 26); doc.rect(0, 0, W, H, 'F');
-    doc.setFillColor(17, 24, 39); doc.rect(0, 0, W, 16, 'F');
+    doc.setFillColor(248,250,252); doc.rect(0, 0, W, H, 'F');
+    doc.setFillColor(teal.r,teal.g,teal.b); doc.rect(0, 0, W, 16, 'F');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
-    doc.setTextColor(teal.r, teal.g, teal.b);
+    doc.setTextColor(255,255,255);
     doc.text('TSQ 9610 · 12E797 · RELATÓRIO ANUAL ' + yr, 20, 10);
-    doc.setTextColor(100, 116, 139); doc.text('ANÁLISE ANUAL E MANUTENÇÕES CORRETIVAS', 190, 10, { align: 'right' });
-    doc.setFontSize(14); doc.setTextColor(226, 232, 240);
+    doc.setTextColor(...txtMuted); doc.text('ANÁLISE ANUAL E MANUTENÇÕES CORRETIVAS', 190, 10, { align: 'right' });
+    doc.setFontSize(14); doc.setTextColor(...txtMain);
     doc.text('Análise Anual — Manutenções Corretivas e Recomendações ' + (yr + 1), 20, 28);
 
     // Corrective records
@@ -715,25 +873,25 @@ async function generatePDF() {
     doc.setDrawColor(30, 47, 71); doc.line(20, 44, 190, 44);
 
     let p5y = 50;
-    if (correctiveRecords.length === 0) {
-      doc.setFillColor(16, 32, 22); doc.roundedRect(18, p5y, 174, 16, 2, 2, 'F');
+    if (corrYr.length === 0) {
+      doc.setFillColor(241,245,249); doc.roundedRect(18, p5y, 174, 16, 2, 2, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(green.r, green.g, green.b);
-      doc.text('✓  Nenhuma manutenção corretiva registrada em ' + yr + '. Sistema sem falhas criticas.', 24, p5y + 10, { maxWidth: 162 });
+      doc.text('Nenhuma manutencao corretiva registrada em ' + yr + '. Sistema sem falhas criticas.', 24, p5y + 10, { maxWidth: 162 });
       p5y += 24;
     } else {
-      correctiveRecords.forEach((r, i) => {
-        doc.setFillColor(22, 32, 50); doc.roundedRect(18, p5y, 174, 30, 2, 2, 'F');
+      corrYr.forEach((r, i) => {
+        doc.setFillColor(248,250,252); doc.roundedRect(18, p5y, 174, 30, 2, 2, 'F');
         doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(amber.r, amber.g, amber.b);
         doc.text(r.date + ' — ' + r.resp + ' | Supervisão: ' + r.sup, 22, p5y + 8);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(226, 232, 240);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...txtMain);
         doc.text('Problema: ', 22, p5y + 15);
-        doc.setFont('helvetica', 'normal'); doc.setTextColor(148, 163, 184);
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(...txtMuted);
         doc.text(r.prob, 44, p5y + 15, { maxWidth: 148 });
-        doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 212, 184);
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(teal.r,teal.g,teal.b);
         doc.text('Ação: ', 22, p5y + 22);
-        doc.setFont('helvetica', 'normal'); doc.setTextColor(148, 163, 184);
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(...txtMuted);
         doc.text(r.proc, 36, p5y + 22, { maxWidth: 154 });
-        doc.setFont('helvetica', 'bold'); doc.setTextColor(100, 116, 139);
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(...txtLabel);
         doc.text('Resultado: ', 22, p5y + 28);
         doc.setFont('helvetica', 'normal');
         doc.text(r.result, 48, p5y + 28, { maxWidth: 144 });
@@ -747,30 +905,39 @@ async function generatePDF() {
     doc.text('RECOMENDAÇÕES PARA ' + (yr + 1), 20, p5y);
     doc.line(20, p5y + 2, 190, p5y + 2);
     p5y += 10;
-    const recs5 = [
-      [amber, 'URGENTE', 'Substituir liner do injetor — 342 injecoes acumuladas, proximo do limite de 400.'],
-      [amber, 'URGENTE', 'Verificar oleo da bomba foreline — nenhum registro localizado em ' + yr + '.'],
-      [green, 'MONITORAR', 'Tendencia do EMV: +92 V em ' + yr + '. Projecao ' + (yr + 1) + ': ~1950 V. Acao ao atingir 2500 V.'],
-      [green, 'PLANEJAR', 'Agendar limpeza da fonte de ions — 1T/' + (yr + 1) + ' (manter intervalo trimestral).'],
-      [green, 'INFORMATIVO', 'Vacuo integro em ' + yr + ': m/z 28=4.8%, m/z 32=0.9%. Ambos dentro dos limites.'],
-    ];
+    // Recommendations — generated from real user data
+    const recs5 = [];
+    if (septoCnt > 600) recs5.push([amber, 'URGENTE', 'Substituir liner — ' + septoCnt + ' injecoes acumuladas em ' + yr + '. Limite recomendado: 600.']);
+    else recs5.push([green, 'MONITORAR', 'Liner com ' + septoCnt + ' injecoes em ' + yr + '. Dentro do limite normal.']);
+    if (limpFonte === 0) recs5.push([amber, 'PLANEJAR', 'Agendar limpeza da fonte de ions para 1T/' + (yr+1) + ' — nenhuma realizada em ' + yr + '.']);
+    else recs5.push([green, 'INFORMATIVO', limpFonte + ' limpeza(s) da fonte de ions realizada(s) em ' + yr + '.']);
+    if (lastTune) {
+      const emvTrend = tunesYr.length > 1 ? tunesYr[tunesYr.length-1].emv - tunesYr[0].emv : 0;
+      recs5.push([lastTune.emv > 2200 ? amber : green, 'MONITORAR', 'EMV atual: ' + lastTune.emv + 'V. Variacao no ano: +' + emvTrend + 'V. Limite de acao: 2500V.']);
+      const vac = 'm/z 28=' + lastTune.m28 + '%, m/z 32=' + lastTune.m32 + '%';
+      recs5.push([(lastTune.m28 > 7 || lastTune.m32 > 1.5) ? amber : green, 'VACUO', 'Ultimo tune: ' + vac + '. ' + ((lastTune.m28 <= 7 && lastTune.m32 <= 1.5) ? 'Dentro dos limites.' : 'Verificar vazamento!')]);
+    }
+    if (corrYr.length > 0) recs5.push([amber, 'CORRETIVA', corrYr.length + ' manut. corretiva(s) registrada(s) em ' + yr + '. Revisar causas raiz para ' + (yr+1) + '.']);
+    else recs5.push([green, 'INFORMATIVO', 'Nenhuma manutencao corretiva registrada em ' + yr + '. Sistema estavel.']);
     recs5.forEach(r => {
-      doc.setFillColor(22, 32, 50); doc.roundedRect(18, p5y, 174, 14, 2, 2, 'F');
+      doc.setFillColor(248,250,252); doc.roundedRect(18, p5y, 174, 14, 2, 2, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(r[0].r, r[0].g, r[0].b);
       doc.text(r[1], 23, p5y + 9);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...txtMuted);
       doc.text(r[2], 23 + 35, p5y + 9, { maxWidth: 148 });
       p5y += 18;
     });
 
     // Signature block
     p5y += 10;
-    doc.setFillColor(17, 24, 39); doc.roundedRect(18, p5y, 174, 38, 2, 2, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(100, 116, 139);
+    doc.setFillColor(248,250,252); doc.roundedRect(18, p5y, 174, 38, 2, 2, 'F');
+    doc.setDrawColor(...borderC); doc.setLineWidth(.4); doc.roundedRect(18, p5y, 174, 38, 2, 2, 'S');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...txtMuted);
     doc.text('ASSINATURAS', 105, p5y + 8, { align: 'center' });
+    doc.setDrawColor(...borderC);
     doc.line(30, p5y + 22, 90, p5y + 22);
     doc.line(120, p5y + 22, 180, p5y + 22);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(100, 116, 139);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...txtMuted);
     doc.text('Responsável pelo Equipamento', 60, p5y + 28, { align: 'center' });
     doc.text('Supervisão / Aprovação', 150, p5y + 28, { align: 'center' });
     doc.text('Data: ___/___/______', 60, p5y + 35, { align: 'center' });
@@ -780,11 +947,11 @@ async function generatePDF() {
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
-      doc.setFillColor(17, 24, 39); doc.rect(0, H - 14, W, 14, 'F');
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(100, 116, 139);
+      doc.setFillColor(...bgAlt); doc.rect(0, H - 14, W, 14, 'F');
+      doc.setDrawColor(...borderC); doc.line(20, H - 14, W - 20, H - 14);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...txtMuted);
       doc.text('Relatório Anual · TSQ 9610 GCxGC–MS/MS · Código 12E797 · Método 5.389', 20, H - 5);
       doc.text('Página ' + i + ' de ' + totalPages, W - 20, H - 5, { align: 'right' });
-      doc.setDrawColor(30, 47, 71); doc.line(20, H - 14, W - 20, H - 14);
     }
 
     status.textContent = 'Salvando arquivo PDF...';
@@ -896,6 +1063,276 @@ function openCorrectiveModal(record) {
 
 function closeCorrectiveModal() {
   document.getElementById('corrective-detail-modal').classList.remove('show');
+}
+
+// =====================================================================
+// TUNE DETAILS MODAL
+// =====================================================================
+function openTuneDetailModal(tuneNum) {
+  const tune = tuneData.find(t => t.num === tuneNum);
+  if (!tune) {
+    alert('Registro de Tune não encontrado.');
+    return;
+  }
+
+  // Encontrar Registro Diário Correspondente
+  const toISO = (dStr) => {
+    if (!dStr) return '';
+    let parts;
+    dStr = dStr.trim();
+    if (dStr.includes('-')) {
+      parts = dStr.split('-');
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    } else if (dStr.includes('/')) {
+      parts = dStr.split('/');
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return dStr;
+  };
+  const tuneIsoDate = toISO(tune.date);
+  const matchedLog = savedLogs.find(l => toISO(l.date) === tuneIsoDate);
+
+  const modal = document.getElementById('tune-detail-modal');
+  const title = document.getElementById('tune-det-title');
+  const content = document.getElementById('tune-det-content');
+
+  title.innerHTML = `Histórico de Tune — <span style="color:var(--teal)">Tune #${tune.num}</span>`;
+
+  // Status Classes & Labels
+  const emvClass = tune.emv > 2200 ? 'alert' : tune.emv > 1800 ? 'warn' : 'ok';
+  const m18Class = tune.m18 > 10 ? 'alert' : tune.m18 > 7 ? 'warn' : 'ok';
+  const m28Class = tune.m28 > 10 ? 'alert' : tune.m28 > 7 ? 'warn' : 'ok';
+  const m32Class = tune.m32 > 2 ? 'alert' : tune.m32 > 1.5 ? 'warn' : 'ok';
+
+  const emvLabel = tune.emv > 2200 ? 'Substituir Multiplicador' : tune.emv > 1800 ? 'Monitorar Desgaste' : 'Normal';
+  const m18Label = tune.m18 > 10 ? 'Umidade Elevada' : tune.m18 > 7 ? 'Atenção' : 'Baixo';
+  const m28Label = tune.m28 > 10 ? 'Vazamento de Ar' : tune.m28 > 7 ? 'Atenção' : 'Normal';
+  const m32Label = tune.m32 > 2 ? 'Vazamento O₂ Crítico' : tune.m32 > 1.5 ? 'Atenção O₂' : 'Normal';
+
+  // Format Date for Display
+  const formatDisplayDate = (dStr) => {
+    if (!dStr) return '—';
+    if (dStr.includes('-')) {
+      const p = dStr.split('-');
+      return `${p[2]}/${p[1]}/${p[0]}`;
+    }
+    return dStr;
+  };
+
+  // Build Tune Column HTML
+  let tuneHTML = `
+    <div style="background:var(--bg2); padding:16px; border-radius:8px; border:1px solid var(--border)">
+      <h3 style="color:var(--teal); margin-top:0; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; font-size:15px; display:flex; justify-content:space-between; align-items:center;">
+        <span>📊 Parâmetros do Tune</span>
+        <span class="metric-badge badge-ok" style="font-size:11px">Tune Realizado</span>
+      </h3>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+        <div>
+          <span style="color:var(--muted); font-size:11px; display:block;">DATA DO TUNE</span>
+          <strong style="color:var(--text); font-size:13px;">${formatDisplayDate(tune.date)}</strong>
+        </div>
+        <div>
+          <span style="color:var(--muted); font-size:11px; display:block;">OPERADOR</span>
+          <strong style="color:var(--text); font-size:13px;">${tune.op || '—'}</strong>
+        </div>
+        <div>
+          <span style="color:var(--muted); font-size:11px; display:block;">FILAMENTO ACIONADO</span>
+          <strong style="color:var(--text); font-size:13px;">Filamento ${tune.fil}</strong>
+        </div>
+        <div>
+          <span style="color:var(--muted); font-size:11px; display:block;">TEMP. INTERFACE</span>
+          <strong style="color:var(--text); font-size:13px;">${tune.tint || '—'} °C</strong>
+        </div>
+      </div>
+
+      <!-- EMV KPI Card -->
+      <div class="metric-card ${emvClass}" style="padding:12px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="metric-title" style="font-size:12px;">EMV (Tensão do Multiplicador)</span>
+          <span class="metric-badge badge-${emvClass}" style="font-size:10px;">${emvLabel}</span>
+        </div>
+        <div class="metric-value" style="font-size:24px; margin-top:4px;">${tune.emv}<span class="metric-unit">V</span></div>
+      </div>
+
+      <!-- Abundances Calibrante PFTBA -->
+      <h4 style="color:var(--text); margin-top:0; margin-bottom:8px; font-size:12px; font-weight:600;">Abundâncias PFTBA (Calibrante)</h4>
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:16px;">
+        <div style="background:var(--bg3); padding:8px; border-radius:6px; text-align:center;">
+          <div style="font-size:10px; color:var(--muted)">m/z 69</div>
+          <div style="font-size:13px; font-weight:bold; color:var(--text)">${tune.m69}%</div>
+          <div style="font-size:9px; color:var(--label)">Pico Base</div>
+        </div>
+        <div style="background:var(--bg3); padding:8px; border-radius:6px; text-align:center;">
+          <div style="font-size:10px; color:var(--muted)">m/z 219</div>
+          <div style="font-size:13px; font-weight:bold; color:var(--text)">${tune.m219}%</div>
+          <div style="font-size:9px; color:var(--label)">Relativo</div>
+        </div>
+        <div style="background:var(--bg3); padding:8px; border-radius:6px; text-align:center;">
+          <div style="font-size:10px; color:var(--muted)">m/z 502</div>
+          <div style="font-size:13px; font-weight:bold; color:var(--text)">${tune.m502}%</div>
+          <div style="font-size:9px; color:var(--label)">Relativo</div>
+        </div>
+      </div>
+
+      <!-- Diagnostic Information -->
+      <h4 style="color:var(--text); margin-top:0; margin-bottom:8px; font-size:12px; font-weight:600;">Canais de Diagnóstico & Vácuo</h4>
+      <div style="display:grid; grid-template-columns:1fr; gap:8px;">
+        <div class="indicator-row" style="background:var(--bg3); padding:6px 10px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px;"><strong style="color:var(--text)">m/z 18 (Umidade)</strong> <span style="color:var(--muted); font-size:10px;">(Limite: &lt;10%)</span></span>
+          <span class="metric-badge badge-${m18Class}" style="font-size:10px; min-width:60px; text-align:center;">${tune.m18}% · ${m18Label}</span>
+        </div>
+        <div class="indicator-row" style="background:var(--bg3); padding:6px 10px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px;"><strong style="color:var(--text)">m/z 28 (Nitrogênio)</strong> <span style="color:var(--muted); font-size:10px;">(Limite: &lt;10%)</span></span>
+          <span class="metric-badge badge-${m28Class}" style="font-size:10px; min-width:60px; text-align:center;">${tune.m28}% · ${m28Label}</span>
+        </div>
+        <div class="indicator-row" style="background:var(--bg3); padding:6px 10px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px;"><strong style="color:var(--text)">m/z 32 (Oxigênio)</strong> <span style="color:var(--muted); font-size:10px;">(Limite: &lt;2%)</span></span>
+          <span class="metric-badge badge-${m32Class}" style="font-size:10px; min-width:60px; text-align:center;">${tune.m32}% · ${m32Label}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Build Log Column HTML
+  let logHTML = '';
+  if (matchedLog) {
+    // Reconstruir checklist de manutenções preventivas do dia
+    let preventives = [];
+    if (matchedLog.he === 'SIM') preventives.push('Troca Cilindro Hélio');
+    if (matchedLog.limpinj === 'SIM') preventives.push('Limpeza do Injetor');
+    if (matchedLog.septo === 'SIM') preventives.push('Substituição de Septo');
+    if (matchedLog.liner === 'SIM') preventives.push('Substituição de Liner');
+    if (matchedLog.limpfonte === 'SIM') preventives.push('Limpeza da Fonte de Íons');
+    if (matchedLog.corte && parseFloat(matchedLog.corte) > 0) preventives.push(`Corte de Coluna (${matchedLog.corte} cm)`);
+
+    logHTML = `
+      <div style="background:var(--bg2); padding:16px; border-radius:8px; border:1px solid var(--border)">
+        <h3 style="color:var(--teal); margin-top:0; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; font-size:15px; display:flex; justify-content:space-between; align-items:center;">
+          <span>📝 Registro Diário Associado</span>
+          <span class="metric-badge badge-ok" style="font-size:11px">Localizado</span>
+        </h3>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+          <div>
+            <span style="color:var(--muted); font-size:11px; display:block;">OPERADOR DIÁRIO</span>
+            <strong style="color:var(--text); font-size:13px;">${matchedLog.op || '—'}</strong>
+          </div>
+          <div>
+            <span style="color:var(--muted); font-size:11px; display:block;">SISTEMA OPERACIONAL</span>
+            <strong style="color:var(--text); font-size:13px;">${matchedLog.sistema || 'Normal'}</strong>
+          </div>
+          <div>
+            <span style="color:var(--muted); font-size:11px; display:block;">PRESSÃO INJETOR (psi)</span>
+            <strong style="color:var(--text); font-size:13px;">${matchedLog.psi ? matchedLog.psi + ' psi' : '—'}</strong>
+          </div>
+          <div>
+            <span style="color:var(--muted); font-size:11px; display:block;">TEMP. AMBIENTE (Tamb)</span>
+            <strong style="color:var(--text); font-size:13px;">${matchedLog.tamb ? matchedLog.tamb + ' °C' : '23 °C'}</strong>
+          </div>
+          <div>
+            <span style="color:var(--muted); font-size:11px; display:block;">INJEÇÕES REGISTRADAS</span>
+            <strong style="color:var(--text); font-size:13px;">${matchedLog.inj || 0} injeções</strong>
+          </div>
+          <div>
+            <span style="color:var(--muted); font-size:11px; display:block;">tR PADRÃO INTERNO (PI)</span>
+            <strong style="color:var(--text); font-size:13px;">${matchedLog.trpi ? matchedLog.trpi + ' min' : '—'}</strong>
+          </div>
+        </div>
+
+        ${matchedLog.col_model ? `
+          <div style="background:var(--bg3); padding:10px; border-radius:6px; margin-bottom:16px; border-left:3px solid var(--blue)">
+            <span style="color:var(--muted); font-size:10px; display:block;">COLUNA CROMATOGRÁFICA EM USO</span>
+            <strong style="color:var(--blue); font-size:12px;">${matchedLog.col_model}</strong>
+            ${matchedLog.corte ? `<span style="color:var(--text); font-size:11px; margin-left:10px;">(Corte: -${matchedLog.corte} cm)</span>` : ''}
+          </div>
+        ` : ''}
+
+        <!-- checklist preventives -->
+        <h4 style="color:var(--text); margin-top:0; margin-bottom:8px; font-size:12px; font-weight:600;">Intervenções Realizadas no Dia</h4>
+        <div style="margin-bottom:16px;">
+          {PREVENTIVE_ITEMS_HTML}
+        </div>
+
+        <h4 style="color:var(--text); margin-top:0; margin-bottom:4px; font-size:12px; font-weight:600;">Observações do Operador</h4>
+        <div style="background:var(--bg3); padding:10px; border-radius:6px; font-size:12px; color:var(--label); font-style:italic; line-height:1.4; border:1px solid var(--border)">
+          ${matchedLog.obs || 'Nenhuma ocorrência registrada no dia.'}
+        </div>
+      </div>
+    `;
+
+    // Render list of preventive items beautifully
+    let listHTML = '';
+    if (preventives.length > 0) {
+      listHTML = preventives.map(p => `
+        <div style="display:inline-flex; align-items:center; background:rgba(13,148,136,.12); color:var(--teal); padding:4px 8px; border-radius:4px; margin-right:6px; margin-bottom:6px; font-size:11px; font-weight:500;">
+          <span style="margin-right:4px;">✓</span> ${p}
+        </div>
+      `).join('');
+    } else {
+      listHTML = '<div style="font-size:11px; color:var(--muted)">Nenhuma manutenção preventiva realizada neste dia.</div>';
+    }
+    logHTML = logHTML.replace('{PREVENTIVE_ITEMS_HTML}', listHTML);
+
+  } else {
+    logHTML = `
+      <div style="background:var(--bg2); padding:16px; border-radius:8px; border:1px solid var(--border); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; height:100%; min-height:300px;">
+        <span style="font-size:40px; margin-bottom:12px;">📝</span>
+        <h3 style="color:var(--muted); margin:0 0 8px 0; font-size:16px;">Sem Registro Diário Correspondente</h3>
+        <p style="color:var(--label); font-size:12px; max-width:280px; margin:0 0 16px 0; line-height:1.4;">
+          Nenhuma folha de Registro Diário foi preenchida para a data de <strong>${formatDisplayDate(tune.date)}</strong>.
+        </p>
+        <button class="btn btn-outline" style="font-size:11px; padding:4px 12px;" onclick="showPageWithTuneData('${tune.date}', ${tune.num})">
+          + Criar Registro Diário
+        </button>
+      </div>
+    `;
+  }
+
+  // Assemble into 2 columns grid
+  content.innerHTML = `
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+      ${tuneHTML}
+      ${logHTML}
+    </div>
+  `;
+
+  modal.classList.add('show');
+}
+
+function closeTuneDetailModal() {
+  document.getElementById('tune-detail-modal').classList.remove('show');
+}
+
+function showPageWithTuneData(tuneDate, tuneNum) {
+  closeTuneDetailModal();
+  showPage('log');
+  
+  const toISO = (dStr) => {
+    if (!dStr) return '';
+    let parts;
+    dStr = dStr.trim();
+    if (dStr.includes('-')) {
+      parts = dStr.split('-');
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    } else if (dStr.includes('/')) {
+      parts = dStr.split('/');
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return dStr;
+  };
+
+  const dateInput = document.getElementById('log-date');
+  if (dateInput) {
+    // Temporarily enable it to write, then keep it disabled if it is locked
+    dateInput.disabled = false;
+    dateInput.value = toISO(tuneDate);
+    dateInput.disabled = true;
+  }
+
+  const tuneNumInput = document.getElementById('log-tunenum');
+  if (tuneNumInput) {
+    tuneNumInput.value = tuneNum;
+  }
 }
 
 async function deleteCorrective(id) {
@@ -1197,13 +1634,17 @@ async function saveColumn() {
       body: JSON.stringify(entry)
     });
     const result = await response.json();
-    columns = result.columns;
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Erro desconhecido');
+    }
+    columns = result.columns || [];
     renderColumnHistory();
     updateColumnSelects();
     closeColumnModal();
+    alert('Coluna cadastrada com sucesso!');
   } catch (e) {
     console.error(e);
-    alert('Erro ao salvar coluna.');
+    alert('Erro ao salvar coluna: ' + e.message);
   }
 }
 
@@ -1240,10 +1681,16 @@ async function deleteColumn(id) {
   try {
     const response = await fetch(`/api/columns/${id}`, { method: 'DELETE' });
     const result = await response.json();
-    columns = result.columns;
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Erro ao excluir');
+    }
+    columns = result.columns || [];
     renderColumnHistory();
     updateColumnSelects();
-  } catch (e) { console.error(e); }
+  } catch (e) { 
+    console.error(e); 
+    alert('Erro ao excluir coluna: ' + e.message);
+  }
 }
 
 function updateColumnSelects() {
@@ -1252,6 +1699,25 @@ function updateColumnSelects() {
   const activeCols = columns.filter(c => c.status === 'Em uso');
   sel.innerHTML = '<option value="">— Selecione uma coluna —</option>' + 
     activeCols.map(c => `<option value="${c.model}">${c.model} (${c.type})</option>`).join('');
+}
+
+function updateAutoIncrementedFields() {
+  // 1. Temperatura ambiente predefinida
+  const elTemp = document.getElementById('log-temp');
+  if (elTemp && !elTemp.value) elTemp.value = '23';
+
+  // 2. Injeções autoincrementadas (total + 1)
+  let totalInjections = 0;
+  savedLogs.forEach(l => {
+    if (l.inj) totalInjections += parseInt(l.inj);
+  });
+  const elInj = document.getElementById('log-inj');
+  if (elInj) elInj.value = totalInjections + 1;
+
+  // 3. Nº do Tune autoincrementado
+  const nextTuneNum = tuneData.length > 0 ? Math.max(...tuneData.map(t => t.num || 0)) + 1 : 1;
+  const elTuneNum = document.getElementById('log-tunenum');
+  if (elTuneNum) elTuneNum.value = nextTuneNum;
 }
 
 // =====================================================================
@@ -1363,6 +1829,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderColumnHistory();
     updateColumnSelects();
     renderMaintenanceSchedule();
+    updateAutoIncrementedFields();
     
   } catch (e) {
     console.error("Falha ao se conectar com o servidor Node.js", e);

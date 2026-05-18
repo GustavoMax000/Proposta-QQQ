@@ -39,7 +39,7 @@ async function initDB() {
         CREATE TABLE IF NOT EXISTS saved_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, op TEXT, psi REAL, inj INTEGER, 
             obs TEXT, sistema TEXT, he TEXT, limpinj TEXT, septo TEXT, liner TEXT, 
-            col_model TEXT, corte REAL, trpi REAL, limpfonte TEXT
+            col_model TEXT, corte REAL, trpi REAL, limpfonte TEXT, tamb REAL
         );
         CREATE TABLE IF NOT EXISTS corrective_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, resp TEXT, sup TEXT, prob TEXT, proc TEXT, result TEXT
@@ -47,11 +47,25 @@ async function initDB() {
         CREATE TABLE IF NOT EXISTS inject_by_month (
             month_idx INTEGER PRIMARY KEY, count INTEGER
         );
-        CREATE TABLE IF NOT EXISTS columns (
+        CREATE TABLE IF NOT EXISTS chromatographic_columns (
             id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, model TEXT, serial TEXT, 
             install_date TEXT, initial_length REAL, status TEXT
         );
     `);
+    
+    // Tenta adicionar a coluna tamb a tabelas existentes
+    try {
+        await db.exec("ALTER TABLE saved_logs ADD COLUMN tamb REAL");
+    } catch (e) {
+        // Ignora o erro se a coluna já existir no banco de dados antigo
+    }
+    
+    // Tenta adicionar a coluna col_model a tabelas existentes
+    try {
+        await db.exec("ALTER TABLE saved_logs ADD COLUMN col_model TEXT");
+    } catch (e) {
+        // Ignora o erro se a coluna já existir no banco de dados antigo
+    }
 
     // Migração inicial do JSON para o SQLite (se o json existir e a tabela estiver vazia)
     const tuneCount = await db.get('SELECT COUNT(*) as count FROM tune_data');
@@ -96,7 +110,7 @@ app.get('/api/data', async (req, res) => {
         const injectByMonth = Array(12).fill(0);
         injectRows.forEach(row => { injectByMonth[row.month_idx] = row.count; });
         
-        const columns = await db.all('SELECT * FROM columns ORDER BY id DESC');
+        const columns = await db.all('SELECT * FROM chromatographic_columns ORDER BY id DESC');
         
         res.json({
             tuneData: tuneData,
@@ -129,10 +143,10 @@ app.post('/api/logs', async (req, res) => {
     try {
         const newLog = req.body;
         await db.run(`INSERT INTO saved_logs 
-            (date, op, psi, inj, obs, sistema, he, limpinj, septo, liner, col_model, corte, trpi, limpfonte) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+            (date, op, psi, inj, obs, sistema, he, limpinj, septo, liner, col_model, corte, trpi, limpfonte, tamb) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
             [newLog.date, newLog.op, newLog.psi, newLog.inj, newLog.obs, newLog.sistema, newLog.he, 
-             newLog.limpinj, newLog.septo, newLog.liner, newLog.col_model, newLog.corte, newLog.trpi, newLog.limpfonte]);
+             newLog.limpinj, newLog.septo, newLog.liner, newLog.col_model, newLog.corte, newLog.trpi, newLog.limpfonte, newLog.tamb]);
         
         appendTxtLog(`Novo registro diário adicionado pelo operador ${newLog.op || 'Desconhecido'}. (Injeções: ${newLog.inj || 0}, Psi: ${newLog.psi || '—'})`);
         
@@ -173,7 +187,7 @@ app.delete('/api/corrective/:id', async (req, res) => {
 // Rotas de Colunas
 app.get('/api/columns', async (req, res) => {
     try {
-        const cols = await db.all('SELECT * FROM columns ORDER BY id DESC');
+        const cols = await db.all('SELECT * FROM chromatographic_columns ORDER BY id DESC');
         res.json(cols);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -183,9 +197,9 @@ app.get('/api/columns', async (req, res) => {
 app.post('/api/columns', async (req, res) => {
     try {
         const c = req.body;
-        await db.run('INSERT INTO columns (type, model, serial, install_date, initial_length, status) VALUES (?, ?, ?, ?, ?, ?)', 
+        await db.run('INSERT INTO chromatographic_columns (type, model, serial, install_date, initial_length, status) VALUES (?, ?, ?, ?, ?, ?)', 
             [c.type, c.model, c.serial, c.install_date, c.initial_length, c.status]);
-        const cols = await db.all('SELECT * FROM columns ORDER BY id DESC');
+        const cols = await db.all('SELECT * FROM chromatographic_columns ORDER BY id DESC');
         res.json({ success: true, columns: cols });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -195,12 +209,17 @@ app.post('/api/columns', async (req, res) => {
 app.delete('/api/columns/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        await db.run('DELETE FROM columns WHERE id = ?', [id]);
-        const cols = await db.all('SELECT * FROM columns ORDER BY id DESC');
+        await db.run('DELETE FROM chromatographic_columns WHERE id = ?', [id]);
+        const cols = await db.all('SELECT * FROM chromatographic_columns ORDER BY id DESC');
         res.json({ success: true, columns: cols });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+
+app.post('/api/debug', (req, res) => {
+    console.log("TELEMETRY:", req.body);
+    res.json({ ok: true });
 });
 
 initDB().then(() => {
