@@ -619,8 +619,8 @@
               <input type="number" id="log-temp" placeholder="23.0" value="23" step="0.1">
             </div>
             <div class="form-field">
-              <label>Sistema</label>
-              <select id="log-sistema">
+              <label>Sistema Ligado?</label>
+              <select id="log-sistema" placeholder="- Selecione -">
                 <option value="">— Selecione —</option>
                 <option value="Sim">Sim</option>
                 <option value="Não">Não</option>
@@ -763,142 +763,90 @@
     <!-- ===== PAGE: ANÁLISE ANUAL ===== -->
     <div class="page" id="page-analise">
       <div class="top-bar">
-        <div class="page-title">Análise <span>Anual <span class="current-year"></span></span></div>
-        <div class="top-actions">
+        <div class="page-title">Análise <span>Anual <span id="analysis-year-title"></span></span></div>
+        <div class="top-actions" style="display:flex; gap:10px; align-items:center;">
+          <select id="analysis-year-select" onchange="updateAnalysisPage()"
+            style="background:var(--bg2); color:var(--text); border:1px solid var(--border); padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; font-family:'Roboto Condensed', sans-serif;">
+            <!-- Dinamicamente preenchido -->
+          </select>
           <button class="btn btn-amber" onclick="generatePDF()">&#8595; Exportar Relatório PDF</button>
         </div>
       </div>
       <div class="grid-4 mb24">
-        <div class="metric-card ok">
+        <div class="metric-card ok" id="analysis-card-inj">
           <div class="metric-label">Total de Injeções</div>
-          <div class="metric-value">442</div>
-          <div class="metric-sub">Estimativa anual <span class="current-year"></span></div>
-          <div class="metric-badge badge-ok">✓ Registrado</div>
+          <div class="metric-value" id="analysis-val-inj">—</div>
+          <div class="metric-sub">Estimativa anual <span class="analysis-selected-year"></span></div>
+          <div class="metric-badge badge-ok" id="analysis-badge-inj">✓ Registrado</div>
         </div>
-        <div class="metric-card ok">
+        <div class="metric-card ok" id="analysis-card-tunes">
           <div class="metric-label">Tunes Realizados</div>
-          <div class="metric-value">7</div>
-          <div class="metric-sub">Jan–Nov <span class="current-year"></span></div>
-          <div class="metric-badge badge-ok">✓ Conforme</div>
+          <div class="metric-value" id="analysis-val-tunes">—</div>
+          <div class="metric-sub">Jan–Dez <span class="analysis-selected-year"></span></div>
+          <div class="metric-badge badge-ok" id="analysis-badge-tunes">✓ Conforme</div>
         </div>
-        <div class="metric-card ok">
+        <div class="metric-card ok" id="analysis-card-corr">
           <div class="metric-label">Manutenções Corretivas</div>
-          <div class="metric-value">0</div>
-          <div class="metric-sub">Sem falhas críticas</div>
-          <div class="metric-badge badge-ok">✓ Zero falhas</div>
+          <div class="metric-value" id="analysis-val-corr">—</div>
+          <div class="metric-sub" id="analysis-sub-corr">Sem falhas críticas</div>
+          <div class="metric-badge badge-ok" id="analysis-badge-corr">✓ Zero falhas</div>
         </div>
-        <div class="metric-card info">
+        <div class="metric-card info" id="analysis-card-disp">
           <div class="metric-label">Disponibilidade Est.</div>
-          <div class="metric-value">97<span class="metric-unit">%</span></div>
+          <div class="metric-value" id="analysis-val-disp">—</div>
           <div class="metric-sub">Paradas planejadas apenas</div>
-          <div class="metric-badge badge-info">Boa</div>
+          <div class="metric-badge badge-info" id="analysis-badge-disp">Boa</div>
         </div>
       </div>
       <div class="grid-2 mb24">
         <div class="card">
-          <div class="card-title">Evolução do EMV — <span class="current-year"></span></div>
+          <div class="card-title">Evolução do EMV — <span class="analysis-selected-year"></span></div>
           <div class="chart-wrap-lg"><canvas id="emvAnual"></canvas></div>
-          <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.7">
-            O EMV cresceu <strong style="color:var(--amber)">+92 V</strong> ao longo de <span
-              class="current-year"></span> (1750→1842 V), taxa de ~13
-            V/mês. Projeção 2023: ~1950–2000 V. Limite de ação: <span style="color:var(--red)">2500 V</span>.
+          <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.7" id="analysis-emv-text">
+            Tendência do Electron Multiplier Voltage (EMV) no período. Limite de ação: <span
+              style="color:var(--red)">2500 V</span>.
           </div>
         </div>
         <div class="card">
-          <div class="card-title">Distribuição de Injeções por Mês</div>
+          <div class="card-title">Distribuição de Injeções por Mês — <span class="analysis-selected-year"></span></div>
           <div class="chart-wrap-lg"><canvas id="injAnual"></canvas></div>
-          <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.7">
-            Pico em julho (71 injeções). Total anual estimado: <strong style="color:var(--teal)">442 injeções</strong>.
+          <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.7" id="analysis-inj-text">
+            Distribuição mensal com pico do período.
           </div>
         </div>
       </div>
       <div class="card mb24">
-        <div class="card-title">Integridade do Sistema ao Longo do Ano — m/z 18, 28 e 32</div>
+        <div class="card-title">Integridade do Sistema — m/z 18, 28 e 32 — <span class="analysis-selected-year"></span>
+        </div>
         <div class="chart-wrap-lg"><canvas id="leakAnual"></canvas></div>
         <div style="display:flex;gap:20px;margin-top:12px;font-size:11px;color:var(--muted)">
           <span>Limite m/z 18: <span style="color:var(--amber)">10%</span></span>
           <span>Limite m/z 28: <span style="color:var(--amber)">10%</span></span>
           <span>Limite m/z 32: <span style="color:var(--red)">2%</span></span>
-          <span style="margin-left:auto">✓ Todos os valores dentro dos limites em <span
-              class="current-year"></span></span>
+          <span style="margin-left:auto" id="analysis-leak-status">—</span>
         </div>
       </div>
       <div class="grid-2 mb24">
         <div class="card">
-          <div class="card-title">Linha do Tempo de Manutenções — <span class="current-year"></span></div>
-          <div class="timeline">
-            <div class="tl-item">
-              <div>
-                <div class="tl-dot" style="background:var(--green)"></div>
-              </div>
-              <div class="tl-date">03/02/<span class="current-year"></span></div>
-              <div class="tl-text"><strong>Troca de liner e septo</strong> — Início do ciclo anual</div>
-            </div>
-            <div class="tl-item">
-              <div>
-                <div class="tl-dot" style="background:var(--green)"></div>
-              </div>
-              <div class="tl-date">18/05/<span class="current-year"></span></div>
-              <div class="tl-text"><strong>Troca cilindro He</strong> — Gás de arraste renovado</div>
-            </div>
-            <div class="tl-item">
-              <div>
-                <div class="tl-dot" style="background:var(--teal)"></div>
-              </div>
-              <div class="tl-date">05/08/<span class="current-year"></span></div>
-              <div class="tl-text"><strong>Corte de coluna 1D</strong> — 3 cm removidos (3 cortes no total)</div>
-            </div>
-            <div class="tl-item">
-              <div>
-                <div class="tl-dot" style="background:var(--teal)"></div>
-              </div>
-              <div class="tl-date">22/09/<span class="current-year"></span></div>
-              <div class="tl-text"><strong>Limpeza da fonte de íons</strong> — Ion source cartridge lavado com MeOH HPLC
-              </div>
-            </div>
-            <div class="tl-item">
-              <div>
-                <div class="tl-dot" style="background:var(--green)"></div>
-              </div>
-              <div class="tl-date">15/11/<span class="current-year"></span></div>
-              <div class="tl-text"><strong>Troca de septo</strong> — Manutenção preventiva programada</div>
-            </div>
+          <div class="card-title">Linha do Tempo de Manutenções — <span class="analysis-selected-year"></span></div>
+          <div class="timeline" id="analysis-timeline">
+            <!-- Dynamically populated -->
           </div>
         </div>
         <div class="card">
-          <div class="card-title">Recomendações para 2023</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-            <div class="alert-banner ok" style="margin:0"><span class="alert-icon">✓</span>
-              <div class="alert-text"><strong>Nenhuma falha crítica em <span class="current-year"></span></strong> —
-                Sistema com excelente histórico
-                de disponibilidade. Manutenção preventiva foi eficaz.</div>
-            </div>
-            <div class="alert-banner warn" style="margin:0"><span class="alert-icon">⚠</span>
-              <div class="alert-text"><strong>Substituir liner imediatamente</strong> — 342 injeções. Risco de
-                contaminação do injetor acima de 400 injeções.</div>
-            </div>
-            <div class="alert-banner warn" style="margin:0"><span class="alert-icon">⚠</span>
-              <div class="alert-text"><strong>Verificar óleo da bomba foreline</strong> — Nenhum registro localizado em
-                <span class="current-year"></span>. Verificar imediatamente.
-              </div>
-            </div>
-            <div class="alert-banner ok" style="margin:0"><span class="alert-icon">📈</span>
-              <div class="alert-text"><strong>EMV em 1842 V — normal</strong> — Monitorar tendência. Projeção ~1950 V em
-                mid-2023. Ação: acima de 2500 V.</div>
-            </div>
-            <div class="alert-banner ok" style="margin:0"><span class="alert-icon">🧹</span>
-              <div class="alert-text"><strong>Limpeza da fonte — 1T/2023</strong> — Agendar para jan/fev 2023, manter
-                intervalo trimestral.</div>
-            </div>
+          <div class="card-title">Recomendações para <span id="analysis-next-year"></span></div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px" id="analysis-recommendations">
+            <!-- Dynamically populated -->
           </div>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Manutenções Corretivas Registradas (Sessão)</div>
-        <div id="anual-corrective-list" style="font-size:12px;color:var(--muted);padding:8px 0">Nenhuma manutenção
-          corretiva registrada nesta sessão. Use a aba <strong style="color:var(--teal)">Manutenção</strong> para
-          adicionar.</div>
+        <div class="card-title">Manutenções Corretivas Registradas (Ano Selecionado)</div>
+        <div id="anual-corrective-list" style="font-size:12px;color:var(--muted);padding:8px 0">
+          Nenhuma manutenção corretiva registrada no ano selecionado.
+        </div>
       </div>
+    </div>
     </div>
 
     <!-- ===== PAGE: HELP ===== -->

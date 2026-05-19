@@ -4,6 +4,9 @@
 let tuneData = [];
 let injectByMonth = [];
 let columns = [];
+let chartEmvAnual = null;
+let chartInjAnual = null;
+let chartLeakAnual = null;
 const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 const troubleshootItems = [
@@ -325,7 +328,7 @@ function renderTuneTable() {
       const m18Class = t.m18 > 10 ? 'alert' : t.m18 > 7 ? 'warn' : 'ok';
       const m28Class = t.m28 > 10 ? 'alert' : t.m28 > 7 ? 'warn' : 'ok';
       const m32Class = t.m32 > 2 ? 'alert' : t.m32 > 1.5 ? 'warn' : 'ok';
-      
+
       // Status dinâmico
       let statusClass = 'badge-ok';
       let statusLabel = 'OK';
@@ -365,7 +368,7 @@ function renderTuneTable() {
   }
 
   let pagHTML = '';
-  
+
   // Previous button
   if (tuneCurrentPage > 1) {
     pagHTML += `<button class="btn btn-outline" style="padding:4px 10px; font-size:11px;" onclick="changeTunePage(${tuneCurrentPage - 1})">◀ Anterior</button>`;
@@ -483,7 +486,7 @@ async function saveLog() {
   const op = document.getElementById('log-op').value.trim();
   const temp = document.getElementById('log-temp').value.trim();
   const sistema = document.getElementById('log-sistema').value;
-  
+
   if (!op) { alert('O campo Operador (iniciais) é obrigatório.'); return; }
   if (!temp) { alert('O campo Temperatura Ambiente (Tamb) é obrigatório.'); return; }
   if (!sistema) { alert('O campo Sistema é obrigatório.'); return; }
@@ -491,7 +494,7 @@ async function saveLog() {
   const psi = document.getElementById('log-psi').value;
   const inj = document.getElementById('log-inj').value;
   const obs = document.getElementById('log-obs').value;
-  
+
   // Novos campos
   const he = document.getElementById('log-he').value;
   const limpinj = document.getElementById('log-limpinj').value;
@@ -503,13 +506,13 @@ async function saveLog() {
   const limpfonte = document.getElementById('log-limpfonte').value;
 
   if (!date) { alert('Preencha a data do registro.'); return; }
-  
-  const entry = { 
-    date, op, psi, inj, obs, 
+
+  const entry = {
+    date, op, psi, inj, obs,
     sistema, he, limpinj, septo, liner, col_model, corte, trpi, limpfonte,
     tamb: parseFloat(temp)
   };
-  
+
   const tuneNum = document.getElementById('log-tunenum').value;
   const emvVal = document.getElementById('log-emv').value;
   const filVal = document.getElementById('log-fil').value;
@@ -556,15 +559,15 @@ async function saveLog() {
     ['log-sistema', 'log-he', 'log-limpinj', 'log-septo', 'log-liner', 'log-col', 'log-limpfonte', 'log-fil'].forEach(id => {
       const el = document.getElementById(id); if (el) el.selectedIndex = 0;
     });
-    
+
     // Atualiza o dashboard para refletir as mudanças (ex: contador de injeções)
     renderStatusGeral();
     renderMaintenanceSchedule();
     renderColumnHistory();
-    
+
     // Atualiza campos autoincrementados
     updateAutoIncrementedFields();
-    
+
     alert('Registro salvo com sucesso!');
   } catch (e) {
     console.error(e);
@@ -586,24 +589,24 @@ async function generatePDF() {
     const W = 210, H = 297;
 
     // ── Light-theme color palette (mirrors CSS :root variables) ──────────
-    const hex2rgb = hex => ({ r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) });
+    const hex2rgb = hex => ({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
     // Primary
-    const teal    = hex2rgb('#0d9488'); // --teal
+    const teal = hex2rgb('#0d9488'); // --teal
     const tealDim = hex2rgb('#0f766e'); // --teal-dim
     // State colors
-    const amber   = hex2rgb('#d97706'); // --amber
-    const red     = hex2rgb('#dc2626'); // --red
-    const green   = hex2rgb('#059669'); // --green
-    const blue    = hex2rgb('#2563eb'); // --blue
+    const amber = hex2rgb('#d97706'); // --amber
+    const red = hex2rgb('#dc2626'); // --red
+    const green = hex2rgb('#059669'); // --green
+    const blue = hex2rgb('#2563eb'); // --blue
     // Backgrounds
-    const bgPage  = [248, 250, 252]; // --bg  #f8fafc
-    const bgCard  = [255, 255, 255]; // --bg2 #ffffff
-    const bgAlt   = [241, 245, 249]; // --bg3 #f1f5f9
-    const bgHead  = [240, 253, 250]; // teal-tinted header strip
+    const bgPage = [248, 250, 252]; // --bg  #f8fafc
+    const bgCard = [255, 255, 255]; // --bg2 #ffffff
+    const bgAlt = [241, 245, 249]; // --bg3 #f1f5f9
+    const bgHead = [240, 253, 250]; // teal-tinted header strip
     // Text
-    const txtMain = [15,  23,  42];  // --text  #0f172a
-    const txtMuted= [100, 116, 139]; // --muted #64748b
-    const txtLabel= [71,  85, 105];  // --label #475569
+    const txtMain = [15, 23, 42];  // --text  #0f172a
+    const txtMuted = [100, 116, 139]; // --muted #64748b
+    const txtLabel = [71, 85, 105];  // --label #475569
     // Border
     const borderC = [226, 232, 240]; // --border #e2e8f0
 
@@ -623,7 +626,7 @@ async function generatePDF() {
     doc.text('RELATÓRIO ANUAL DE ACOMPANHAMENTO DE EQUIPAMENTO', 105, 18, { align: 'center' });
     doc.text('MÉTODO 5.389 · TRIAGEM IX · CÓD. EQUIP. 12E797', 105, 25, { align: 'center' });
     doc.setFontSize(26); doc.setTextColor(255, 255, 255);
-    doc.text('TSQ 9610 GCxGC–MS/MS', 105, 40, { align: 'center' });
+    doc.text('TSQ 9610 GC/MS', 105, 40, { align: 'center' });
     doc.setFontSize(10); doc.setFont('helvetica', 'normal');
     doc.setTextColor(209, 250, 229);
     doc.text('Thermo Scientific · Triple Quadrupole GC-MS · Ionização EI', 105, 49, { align: 'center' });
@@ -633,17 +636,17 @@ async function generatePDF() {
     const toISO = s => {
       if (!s) return '';
       s = s.trim();
-      if (s.includes('/')) { const p = s.split('/'); return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; }
+      if (s.includes('/')) { const p = s.split('/'); return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`; }
       return s;
     };
     const tunesYr = tuneData.filter(t => toISO(t.date).startsWith(String(yr)));
-    const logsYr  = savedLogs.filter(l => toISO(l.date).startsWith(String(yr)));
-    const corrYr  = correctiveRecords.filter(r => toISO(r.date).startsWith(String(yr)));
+    const logsYr = savedLogs.filter(l => toISO(l.date).startsWith(String(yr)));
+    const corrYr = correctiveRecords.filter(r => toISO(r.date).startsWith(String(yr)));
 
-    const totalInj  = logsYr.reduce((s,l) => s + (parseInt(l.inj)||0), 0);
+    const totalInj = logsYr.reduce((s, l) => s + (parseInt(l.inj) || 0), 0);
     const limpFonte = logsYr.filter(l => l.limpfonte === 'SIM').length;
-    const lastTune  = tunesYr.length > 0 ? tunesYr[tunesYr.length - 1] : null;
-    const lastEMV   = lastTune ? lastTune.emv : '—';
+    const lastTune = tunesYr.length > 0 ? tunesYr[tunesYr.length - 1] : null;
+    const lastEMV = lastTune ? lastTune.emv : '—';
     const emvStatus = lastTune && lastTune.emv > 2200 ? 'alert' : lastTune && lastTune.emv > 1800 ? 'warn' : 'ok';
 
     // Year badge
@@ -654,7 +657,7 @@ async function generatePDF() {
     // Info table (equipment static data)
     const infoY = 82;
     const rows = [
-      ['Equipamento', 'TSQ 9610 GCxGC–MS/MS'], ['Código', '12E797'],
+      ['Equipamento', 'TSQ 9610 GC/MS'], ['Código', '12E797'],
       ['Fabricante', 'Thermo Fisher Scientific'], ['Método', '5.389 · Triagem IX'],
       ['Gás de Arraste', 'Hélio (He) — Grau Ultra-Puro'], ['Filamentos', 'Duplo (1 e 2)'],
       ['Software', 'TSQ Series 5.0 ou superior'], ['Calibrante', 'PFTBA'],
@@ -666,7 +669,7 @@ async function generatePDF() {
     doc.setDrawColor(...borderC); doc.setLineWidth(.4); doc.line(20, infoY + 2, 190, infoY + 2);
     rows.forEach((r, i) => {
       const y = infoY + 10 + i * 8;
-      if (i % 2 === 0) { doc.setFillColor(241,245,249); } else { doc.setFillColor(255,255,255); }
+      if (i % 2 === 0) { doc.setFillColor(241, 245, 249); } else { doc.setFillColor(255, 255, 255); }
       doc.rect(20, y - 5, 170, 8, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...txtMuted);
       doc.text(r[0], 24, y);
@@ -704,11 +707,11 @@ async function generatePDF() {
     status.textContent = 'Compilando histórico de tune...';
     await sleep(200);
     doc.addPage();
-    doc.setFillColor(11, 15, 26); doc.rect(0, 0, W, H, 'F');
-    doc.setFillColor(17, 24, 39); doc.rect(0, 0, W, 16, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(teal.r, teal.g, teal.b);
+    doc.setFillColor(248, 250, 252); doc.rect(0, 0, W, H, 'F');
+    doc.setFillColor(teal.r, teal.g, teal.b); doc.rect(0, 0, W, 16, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255);
     doc.text('TSQ 9610 · 12E797 · RELATÓRIO ANUAL ' + yr, 20, 10);
-    doc.setTextColor(...txtMuted); doc.text('HISTÓRICO DE TUNE', 190, 10, { align: 'right' });
+    doc.setTextColor(255, 255, 255); doc.text('HISTÓRICO DE TUNE', 190, 10, { align: 'right' });
 
     doc.setFontSize(14); doc.setTextColor(...txtMain);
     doc.text('Histórico de Tune — Parâmetros Registrados', 20, 28);
@@ -719,22 +722,22 @@ async function generatePDF() {
     const th = ['Tune', 'Data', 'Operador', 'Fil', 'EMV(V)', 'T.Int(°C)', 'm/z69', 'm/z219', 'm/z502', 'm/z18', 'm/z28', 'm/z32'];
     const cols = [15, 22, 26, 12, 16, 16, 12, 16, 16, 12, 12, 12];
     let tx = 12, ty = 44;
-    doc.setFillColor(241,245,249); doc.rect(10, ty - 6, 190, 9, 'F');
+    doc.setFillColor(241, 245, 249); doc.rect(10, ty - 6, 190, 9, 'F');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(teal.r, teal.g, teal.b);
     let cx = tx;
     th.forEach((h, i) => { doc.text(h, cx, ty); cx += cols[i]; });
     tunesYr.forEach((t, ri) => {
       ty += 10;
-      doc.setFillColor(ri%2===0 ? 248:255, ri%2===0 ? 250:255, ri%2===0 ? 252:255); doc.rect(10, ty - 6, 190, 9, 'F');
+      doc.setFillColor(ri % 2 === 0 ? 248 : 255, ri % 2 === 0 ? 250 : 255, ri % 2 === 0 ? 252 : 255); doc.rect(10, ty - 6, 190, 9, 'F');
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
       const row = ['#' + t.num, t.date, t.op, 'Fil.' + t.fil, '' + t.emv, '' + t.tint, '' + t.m69, '' + t.m219, '' + t.m502, '' + t.m18, '' + t.m28, '' + t.m32];
       cx = tx;
       row.forEach((val, i) => {
         let clr = [...txtMain];
-        if (i === 4 && t.emv > 2200) clr = [amber.r,amber.g,amber.b];
-        if (i === 9 && t.m18 > 7) clr = [amber.r,amber.g,amber.b];
-        if (i === 10 && t.m28 > 7) clr = [amber.r,amber.g,amber.b];
-        if (i === 11 && t.m32 > 1.5) clr = [red.r,red.g,red.b];
+        if (i === 4 && t.emv > 2200) clr = [amber.r, amber.g, amber.b];
+        if (i === 9 && t.m18 > 7) clr = [amber.r, amber.g, amber.b];
+        if (i === 10 && t.m28 > 7) clr = [amber.r, amber.g, amber.b];
+        if (i === 11 && t.m32 > 1.5) clr = [red.r, red.g, red.b];
         doc.setTextColor(...clr);
         doc.text(val, cx, ty); cx += cols[i];
       });
@@ -747,8 +750,8 @@ async function generatePDF() {
     const limits = [
       'EMV — Faixa normal: 1200 a 2500 V. Acima de 2500 V: considerar substituição do electron multiplier.',
       'm/z 18 (umidade) — Limite: < 10% relativo ao m/z 69. Valores altos indicam contaminação da fonte ou vazamento.',
-      'm/z 28 (N₂) — Limite: < 10% relativo ao m/z 69. Valores altos indicam vazamento de ar.',
-      'm/z 32 (O₂) — Limite: < 2% relativo ao m/z 69. Valores acima deste limite deterioram filamento e detector.',
+      'm/z 28 (N2) — Limite: < 10% relativo ao m/z 69. Valores altos indicam vazamento de ar.',
+      'm/z 32 (O2) — Limite: < 2% relativo ao m/z 69. Valores acima deste limite deterioram filamento e detector.',
       'm/z 219 e m/z 502 — Rastreiam a qualidade do tune com o calibrante PFTBA.',
     ];
     limits.forEach((l, i) => {
@@ -760,31 +763,31 @@ async function generatePDF() {
     status.textContent = 'Gerando plano de manutenção...';
     await sleep(200);
     doc.addPage();
-    doc.setFillColor(248,250,252); doc.rect(0, 0, W, H, 'F');
-    doc.setFillColor(teal.r,teal.g,teal.b); doc.rect(0, 0, W, 16, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
+    doc.setFillColor(248, 250, 252); doc.rect(0, 0, W, H, 'F');
+    doc.setFillColor(teal.r, teal.g, teal.b); doc.rect(0, 0, W, 16, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255);
     doc.text('TSQ 9610 · 12E797 · RELATÓRIO ANUAL ' + yr, 20, 10);
-    doc.setTextColor(...txtMuted); doc.text('MANUTENÇÃO PREVENTIVA', 190, 10, { align: 'right' });
+    doc.setTextColor(255, 255, 255); doc.text('MANUTENÇÃO PREVENTIVA', 190, 10, { align: 'right' });
     doc.setFontSize(14); doc.setTextColor(...txtMain);
     doc.text('Manutenção Preventiva — Plano e Execução', 20, 28);
 
     // Build maintenance items dynamically from real savedLogs data
     const lastOf = (field) => { const l = [...logsYr].reverse().find(x => x[field] === 'SIM'); return l ? l.date : 'Não registrado'; };
-    const septoCnt = logsYr.reduce((s,l) => s + (parseInt(l.inj)||0), 0);
-    const totalCuts = logsYr.reduce((s,l) => s + (parseFloat(l.corte)||0), 0);
+    const septoCnt = logsYr.reduce((s, l) => s + (parseInt(l.inj) || 0), 0);
+    const totalCuts = logsYr.reduce((s, l) => s + (parseFloat(l.corte) || 0), 0);
     const lastSep = lastOf('septo'); const lastLin = lastOf('liner'); const lastFon = lastOf('limpfonte'); const lastHe = lastOf('he');
-    const lastTuneDate = tunesYr.length > 0 ? tunesYr[tunesYr.length-1].date : 'Não registrado';
+    const lastTuneDate = tunesYr.length > 0 ? tunesYr[tunesYr.length - 1].date : 'Não registrado';
     const maintItems = [
       ['Troca de Septo', '100–200 injeções', lastSep, lastSep === 'Não registrado' ? 'ATENÇÃO' : 'OK', lastSep !== 'Não registrado' ? 'Última troca: ' + lastSep : 'Nenhum registro de troca de septo no ano.'],
       ['Troca de Liner', '400–800 injeções', lastLin, septoCnt > 600 ? 'MONITORAR' : 'OK', septoCnt + ' injeções acumuladas no ano. Limite recomendado: 600.'],
-      ['Corte de Coluna', 'Por necessidade', totalCuts > 0 ? logsYr.filter(l=>parseFloat(l.corte)>0).slice(-1)[0]?.date || '—' : '—', 'OK', totalCuts > 0 ? totalCuts.toFixed(1) + ' cm total cortados em ' + yr + '.' : 'Nenhum corte registrado em ' + yr + '.'],
+      ['Corte de Coluna', 'Por necessidade', totalCuts > 0 ? logsYr.filter(l => parseFloat(l.corte) > 0).slice(-1)[0]?.date || '—' : '—', 'OK', totalCuts > 0 ? totalCuts.toFixed(1) + ' cm total cortados em ' + yr + '.' : 'Nenhum corte registrado em ' + yr + '.'],
       ['Limpeza da Fonte de Íons', 'Trimestral / m/z18>10%', lastFon, lastFon === 'Não registrado' ? 'ATENÇÃO' : 'OK', lastFon !== 'Não registrado' ? 'Limpeza realizada em ' + lastFon + '.' : 'Nenhuma limpeza de fonte registrada em ' + yr + '.'],
       ['Troca Cilindro He', 'Por pressão', lastHe, lastHe === 'Não registrado' ? 'ATENÇÃO' : 'OK', lastHe !== 'Não registrado' ? 'Troca realizada em ' + lastHe + '.' : 'Nenhum registro de troca de He em ' + yr + '.'],
       ['Tune EI do Sistema', 'Semanal / pré-corrida', lastTuneDate, tunesYr.length === 0 ? 'ATENÇÃO' : 'OK', tunesYr.length + ' tunes realizados em ' + yr + '. Último: ' + lastTuneDate + '.'],
     ];
     let my = 40;
-    doc.setFillColor(241,245,249); doc.rect(10, my, 190, 10, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(teal.r,teal.g,teal.b);
+    doc.setFillColor(241, 245, 249); doc.rect(10, my, 190, 10, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(teal.r, teal.g, teal.b);
     doc.text('COMPONENTE', 14, my + 6.5);
     doc.text('FREQUÊNCIA', 55, my + 6.5);
     doc.text('ÚLTIMA REALIZ.', 95, my + 6.5);
@@ -792,7 +795,7 @@ async function generatePDF() {
     doc.text('OBSERVAÇÕES', 150, my + 6.5);
     maintItems.forEach((m, i) => {
       my += 10;
-      doc.setFillColor(248,250,252); doc.rect(10, my, 190, 20, 'F');
+      doc.setFillColor(248, 250, 252); doc.rect(10, my, 190, 20, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...txtMain);
       doc.text(m[0], 14, my + 5);
       doc.setFont('helvetica', 'normal'); doc.setTextColor(...txtLabel);
@@ -810,12 +813,12 @@ async function generatePDF() {
     status.textContent = 'Compilando guia de diagnósticos...';
     await sleep(200);
     doc.addPage();
-    doc.setFillColor(248,250,252); doc.rect(0, 0, W, H, 'F');
-    doc.setFillColor(teal.r,teal.g,teal.b); doc.rect(0, 0, W, 16, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
+    doc.setFillColor(248, 250, 252); doc.rect(0, 0, W, H, 'F');
+    doc.setFillColor(teal.r, teal.g, teal.b); doc.rect(0, 0, W, 16, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255);
     doc.text('TSQ 9610 · 12E797 · RELATÓRIO ANUAL ' + yr, 20, 10);
     doc.setTextColor(...txtMuted); doc.text('DIAGNÓSTICO E OCORRÊNCIAS', 190, 10, { align: 'right' });
-    doc.setFontSize(14); doc.setTextColor(...txtMain);
+    doc.setFontSize(14); doc.setTextColor(255, 255, 255);
     doc.text('Diagnósticos e Ocorrências — ' + yr, 20, 28);
     doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...txtMuted);
     doc.text('Baseado no TSQ 9610 Hardware Manual (1R120622-0003 Rev. B) e User Guide (1R120622-0002 Rev. B)', 20, 35);
@@ -841,12 +844,12 @@ async function generatePDF() {
     const lastM18 = lastTune ? lastTune.m18 : 0; const lastM32 = lastTune ? lastTune.m32 : 0;
     if (lastM18 > 7) atencoes.push(['!', 'm/z 18 = ' + lastM18 + '% no ultimo tune. Verificar umidade e fonte de ions.', [amber.r, amber.g, amber.b]]);
     if (lastM32 > 1.5) atencoes.push(['!', 'm/z 32 = ' + lastM32 + '% no ultimo tune — risco de dano ao filamento. Investigar vazamento imediatamente.', [red.r, red.g, red.b]]);
-    if (limpFonte === 0) atencoes.push(['!', 'Nenhuma limpeza da fonte de ions registrada em ' + yr + '. Agendar para 1T/' + (yr+1) + '.', [amber.r, amber.g, amber.b]]);
+    if (limpFonte === 0) atencoes.push(['!', 'Nenhuma limpeza da fonte de ions registrada em ' + yr + '. Agendar para 1T/' + (yr + 1) + '.', [amber.r, amber.g, amber.b]]);
     if (atencoes.length === 0) atencoes.push(['v', 'Sistema dentro dos parametros em ' + yr + '. Nenhum ponto critico detectado.', [16, 185, 129]]);
     let ay = 88;
     atencoes.forEach(a => {
-      doc.setFillColor(248,250,252); doc.roundedRect(18, ay - 5, 174, 14, 2, 2, 'F');
-      doc.setDrawColor(a[2][0],a[2][1],a[2][2]); doc.setLineWidth(.4); doc.roundedRect(18, ay - 5, 174, 14, 2, 2, 'S');
+      doc.setFillColor(248, 250, 252); doc.roundedRect(18, ay - 5, 174, 14, 2, 2, 'F');
+      doc.setDrawColor(a[2][0], a[2][1], a[2][2]); doc.setLineWidth(.4); doc.roundedRect(18, ay - 5, 174, 14, 2, 2, 'S');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(a[2][0], a[2][1], a[2][2]);
       doc.text(a[0], 23, ay + 2.5);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...txtMuted);
@@ -858,10 +861,10 @@ async function generatePDF() {
     status.textContent = 'Gerando resumo anual e registros corretivos...';
     await sleep(200);
     doc.addPage();
-    doc.setFillColor(248,250,252); doc.rect(0, 0, W, H, 'F');
-    doc.setFillColor(teal.r,teal.g,teal.b); doc.rect(0, 0, W, 16, 'F');
+    doc.setFillColor(248, 250, 252); doc.rect(0, 0, W, H, 'F');
+    doc.setFillColor(teal.r, teal.g, teal.b); doc.rect(0, 0, W, 16, 'F');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
-    doc.setTextColor(255,255,255);
+    doc.setTextColor(255, 255, 255);
     doc.text('TSQ 9610 · 12E797 · RELATÓRIO ANUAL ' + yr, 20, 10);
     doc.setTextColor(...txtMuted); doc.text('ANÁLISE ANUAL E MANUTENÇÕES CORRETIVAS', 190, 10, { align: 'right' });
     doc.setFontSize(14); doc.setTextColor(...txtMain);
@@ -874,20 +877,20 @@ async function generatePDF() {
 
     let p5y = 50;
     if (corrYr.length === 0) {
-      doc.setFillColor(241,245,249); doc.roundedRect(18, p5y, 174, 16, 2, 2, 'F');
+      doc.setFillColor(241, 245, 249); doc.roundedRect(18, p5y, 174, 16, 2, 2, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(green.r, green.g, green.b);
       doc.text('Nenhuma manutencao corretiva registrada em ' + yr + '. Sistema sem falhas criticas.', 24, p5y + 10, { maxWidth: 162 });
       p5y += 24;
     } else {
       corrYr.forEach((r, i) => {
-        doc.setFillColor(248,250,252); doc.roundedRect(18, p5y, 174, 30, 2, 2, 'F');
+        doc.setFillColor(248, 250, 252); doc.roundedRect(18, p5y, 174, 30, 2, 2, 'F');
         doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(amber.r, amber.g, amber.b);
         doc.text(r.date + ' — ' + r.resp + ' | Supervisão: ' + r.sup, 22, p5y + 8);
         doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...txtMain);
         doc.text('Problema: ', 22, p5y + 15);
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...txtMuted);
         doc.text(r.prob, 44, p5y + 15, { maxWidth: 148 });
-        doc.setFont('helvetica', 'bold'); doc.setTextColor(teal.r,teal.g,teal.b);
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(teal.r, teal.g, teal.b);
         doc.text('Ação: ', 22, p5y + 22);
         doc.setFont('helvetica', 'normal'); doc.setTextColor(...txtMuted);
         doc.text(r.proc, 36, p5y + 22, { maxWidth: 154 });
@@ -899,7 +902,7 @@ async function generatePDF() {
       });
     }
 
-    // Recommendations for 2023
+    // Recommendations for next year
     p5y += 6;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(teal.r, teal.g, teal.b);
     doc.text('RECOMENDAÇÕES PARA ' + (yr + 1), 20, p5y);
@@ -909,18 +912,18 @@ async function generatePDF() {
     const recs5 = [];
     if (septoCnt > 600) recs5.push([amber, 'URGENTE', 'Substituir liner — ' + septoCnt + ' injecoes acumuladas em ' + yr + '. Limite recomendado: 600.']);
     else recs5.push([green, 'MONITORAR', 'Liner com ' + septoCnt + ' injecoes em ' + yr + '. Dentro do limite normal.']);
-    if (limpFonte === 0) recs5.push([amber, 'PLANEJAR', 'Agendar limpeza da fonte de ions para 1T/' + (yr+1) + ' — nenhuma realizada em ' + yr + '.']);
+    if (limpFonte === 0) recs5.push([amber, 'PLANEJAR', 'Agendar limpeza da fonte de ions para 1T/' + (yr + 1) + ' — nenhuma realizada em ' + yr + '.']);
     else recs5.push([green, 'INFORMATIVO', limpFonte + ' limpeza(s) da fonte de ions realizada(s) em ' + yr + '.']);
     if (lastTune) {
-      const emvTrend = tunesYr.length > 1 ? tunesYr[tunesYr.length-1].emv - tunesYr[0].emv : 0;
+      const emvTrend = tunesYr.length > 1 ? tunesYr[tunesYr.length - 1].emv - tunesYr[0].emv : 0;
       recs5.push([lastTune.emv > 2200 ? amber : green, 'MONITORAR', 'EMV atual: ' + lastTune.emv + 'V. Variacao no ano: +' + emvTrend + 'V. Limite de acao: 2500V.']);
       const vac = 'm/z 28=' + lastTune.m28 + '%, m/z 32=' + lastTune.m32 + '%';
       recs5.push([(lastTune.m28 > 7 || lastTune.m32 > 1.5) ? amber : green, 'VACUO', 'Ultimo tune: ' + vac + '. ' + ((lastTune.m28 <= 7 && lastTune.m32 <= 1.5) ? 'Dentro dos limites.' : 'Verificar vazamento!')]);
     }
-    if (corrYr.length > 0) recs5.push([amber, 'CORRETIVA', corrYr.length + ' manut. corretiva(s) registrada(s) em ' + yr + '. Revisar causas raiz para ' + (yr+1) + '.']);
+    if (corrYr.length > 0) recs5.push([amber, 'CORRETIVA', corrYr.length + ' manut. corretiva(s) registrada(s) em ' + yr + '. Revisar causas raiz para ' + (yr + 1) + '.']);
     else recs5.push([green, 'INFORMATIVO', 'Nenhuma manutencao corretiva registrada em ' + yr + '. Sistema estavel.']);
     recs5.forEach(r => {
-      doc.setFillColor(248,250,252); doc.roundedRect(18, p5y, 174, 14, 2, 2, 'F');
+      doc.setFillColor(248, 250, 252); doc.roundedRect(18, p5y, 174, 14, 2, 2, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(r[0].r, r[0].g, r[0].b);
       doc.text(r[1], 23, p5y + 9);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...txtMuted);
@@ -930,7 +933,7 @@ async function generatePDF() {
 
     // Signature block
     p5y += 10;
-    doc.setFillColor(248,250,252); doc.roundedRect(18, p5y, 174, 38, 2, 2, 'F');
+    doc.setFillColor(248, 250, 252); doc.roundedRect(18, p5y, 174, 38, 2, 2, 'F');
     doc.setDrawColor(...borderC); doc.setLineWidth(.4); doc.roundedRect(18, p5y, 174, 38, 2, 2, 'S');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...txtMuted);
     doc.text('ASSINATURAS', 105, p5y + 8, { align: 'center' });
@@ -950,7 +953,7 @@ async function generatePDF() {
       doc.setFillColor(...bgAlt); doc.rect(0, H - 14, W, 14, 'F');
       doc.setDrawColor(...borderC); doc.line(20, H - 14, W - 20, H - 14);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...txtMuted);
-      doc.text('Relatório Anual · TSQ 9610 GCxGC–MS/MS · Código 12E797 · Método 5.389', 20, H - 5);
+      doc.text('Relatório Anual · TSQ 9610 GC/MS · Código 12E797 · Método 5.389', 20, H - 5);
       doc.text('Página ' + i + ' de ' + totalPages, W - 20, H - 5, { align: 'right' });
     }
 
@@ -991,7 +994,7 @@ async function saveCorrectiveMaint() {
     correctiveRecords = resData.correctiveRecords;
 
     renderCorrectiveTable();
-    updateAnualCorrectiveList();
+    updateAnalysisPage();
     ['cor-date', 'cor-resp', 'cor-sup', 'cor-prob', 'cor-proc', 'cor-result'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
@@ -1004,16 +1007,16 @@ async function saveCorrectiveMaint() {
 function renderCorrectiveTable() {
   const tbody = document.getElementById('corrective-body');
   if (!tbody) return;
-  
+
   const existingRows = tbody.querySelectorAll('tr.corrective-record');
   existingRows.forEach(r => r.remove());
-  
+
   if (correctiveRecords.length === 0) {
     const emptyRow = document.getElementById('corrective-empty-row');
     if (emptyRow) emptyRow.style.display = 'table-row';
     return;
   }
-  
+
   const emptyRow = document.getElementById('corrective-empty-row');
   if (emptyRow) emptyRow.style.display = 'none';
 
@@ -1306,7 +1309,7 @@ function closeTuneDetailModal() {
 function showPageWithTuneData(tuneDate, tuneNum) {
   closeTuneDetailModal();
   showPage('log');
-  
+
   const toISO = (dStr) => {
     if (!dStr) return '';
     let parts;
@@ -1337,13 +1340,13 @@ function showPageWithTuneData(tuneDate, tuneNum) {
 
 async function deleteCorrective(id) {
   if (!confirm('Deseja realmente excluir este registro de manutenção? Esta ação não pode ser desfeita.')) return;
-  
+
   try {
     const response = await fetch(`/api/corrective/${id}`, { method: 'DELETE' });
     const result = await response.json();
     correctiveRecords = result.correctiveRecords;
     renderCorrectiveTable();
-    updateAnualCorrectiveList();
+    updateAnalysisPage();
     closeCorrectiveModal();
     renderStatusGeral();
   } catch (e) {
@@ -1352,35 +1355,295 @@ async function deleteCorrective(id) {
   }
 }
 
-function updateAnualCorrectiveList() {
-  const el = document.getElementById('anual-corrective-list');
-  if (!el) return;
-  if (correctiveRecords.length === 0) {
-    el.innerHTML = 'Nenhuma manutencao corretiva registrada nesta sessao. Use a aba <strong style="color:var(--teal)">Manutencao</strong> para adicionar.';
-    return;
-  }
-  el.innerHTML = correctiveRecords.map(r => `
-    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-      <span style="font-family:Space Mono,monospace;font-size:10px;color:var(--teal)">${r.date}</span>
-      &nbsp;·&nbsp;<strong>${r.resp}</strong> &nbsp;/&nbsp; Sup: ${r.sup}
-      <div style="color:var(--label);margin-top:4px"><strong style="color:var(--amber)">Problema:</strong> ${r.prob}</div>
-      <div style="color:var(--label);margin-top:2px"><strong style="color:var(--teal)">Acao:</strong> ${r.proc}</div>
-      <div style="color:var(--muted);margin-top:2px"><strong>Resultado:</strong> ${r.result}</div>
-    </div>
-  `).join('');
-}
 
 // =====================================================================
 // ANNUAL PAGE CHARTS
 // =====================================================================
-function initAnualCharts() {
-  new Chart(document.getElementById('emvAnual'), {
+// =====================================================================
+// ANNUAL PAGE DYNAMIC YR SELECTION & DATA
+// =====================================================================
+function populateAnalysisYears() {
+  const select = document.getElementById('analysis-year-select');
+  if (!select) return;
+
+  const parseYear = s => {
+    if (!s) return null;
+    const m = String(s).trim().match(/\b(20\d{2})\b/);
+    return m ? parseInt(m[1]) : null;
+  };
+
+  const yearsSet = new Set();
+
+  tuneData.forEach(t => {
+    const yr = parseYear(t.date);
+    if (yr) yearsSet.add(yr);
+  });
+  savedLogs.forEach(l => {
+    const yr = parseYear(l.date);
+    if (yr) yearsSet.add(yr);
+  });
+  correctiveRecords.forEach(c => {
+    const yr = parseYear(c.date);
+    if (yr) yearsSet.add(yr);
+  });
+
+  const currentYear = new Date().getFullYear();
+  yearsSet.add(currentYear);
+
+  const years = Array.from(yearsSet).sort((a, b) => b - a);
+
+  select.innerHTML = years.map(yr => `<option value="${yr}">${yr}</option>`).join('');
+  select.value = currentYear;
+}
+
+function updateAnalysisPage() {
+  const select = document.getElementById('analysis-year-select');
+  if (!select) return;
+  const selectedYear = parseInt(select.value) || new Date().getFullYear();
+
+  document.getElementById('analysis-year-title').textContent = selectedYear;
+  document.querySelectorAll('.analysis-selected-year').forEach(el => el.textContent = selectedYear);
+  document.getElementById('analysis-next-year').textContent = selectedYear + 1;
+
+  const parseYear = s => {
+    if (!s) return null;
+    const m = String(s).trim().match(/\b(20\d{2})\b/);
+    return m ? parseInt(m[1]) : null;
+  };
+
+  const toISODate = s => {
+    if (!s) return '';
+    s = String(s).trim();
+    if (s.includes('-')) {
+      const parts = s.split('-');
+      if (parts[0].length === 4) return s;
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    if (s.includes('/')) {
+      const parts = s.split('/');
+      if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return s;
+  };
+
+  const tunesYr = tuneData.filter(t => parseYear(t.date) === selectedYear);
+  const logsYr = savedLogs.filter(l => parseYear(l.date) === selectedYear);
+  const corrYr = correctiveRecords.filter(r => parseYear(r.date) === selectedYear);
+
+  const totalInj = logsYr.reduce((s, l) => s + (parseInt(l.inj) || 0), 0);
+  const totalTunes = tunesYr.length;
+  const totalCorr = corrYr.length;
+
+  let availability = 100;
+  availability -= totalCorr * 2.5;
+  const systemFailDays = logsYr.filter(l => l.sistema === 'Falha' || l.sistema === 'Manutenção').length;
+  availability -= systemFailDays * 1.5;
+  availability = Math.max(0, Math.min(100, availability));
+
+  const elInj = document.getElementById('analysis-val-inj');
+  if (elInj) elInj.textContent = totalInj;
+  const elTunes = document.getElementById('analysis-val-tunes');
+  if (elTunes) elTunes.textContent = totalTunes;
+  const elCorr = document.getElementById('analysis-val-corr');
+  if (elCorr) elCorr.textContent = totalCorr;
+  const elDisp = document.getElementById('analysis-val-disp');
+  if (elDisp) elDisp.innerHTML = `${availability.toFixed(1)}<span class="metric-unit">%</span>`;
+
+  const setCardState = (cardId, badgeId, state, message) => {
+    const card = document.getElementById(cardId);
+    const badge = document.getElementById(badgeId);
+    if (card) card.className = `metric-card ${state}`;
+    if (badge) {
+      badge.className = `metric-badge badge-${state}`;
+      badge.innerHTML = message;
+    }
+  };
+
+  if (totalInj > 800) setCardState('analysis-card-inj', 'analysis-badge-inj', 'alert', '⚠ Crítico');
+  else if (totalInj > 500) setCardState('analysis-card-inj', 'analysis-badge-inj', 'warn', '⚠ Elevado');
+  else setCardState('analysis-card-inj', 'analysis-badge-inj', 'ok', '✓ Registrado');
+
+  if (totalTunes >= 12) setCardState('analysis-card-tunes', 'analysis-badge-tunes', 'ok', '✓ Conforme');
+  else if (totalTunes > 0) setCardState('analysis-card-tunes', 'analysis-badge-tunes', 'warn', '⚠ Freq. Baixa');
+  else setCardState('analysis-card-tunes', 'analysis-badge-tunes', 'alert', '⚠ Sem Registro');
+
+  const subCorr = document.getElementById('analysis-sub-corr');
+  if (totalCorr > 0) {
+    setCardState('analysis-card-corr', 'analysis-badge-corr', 'alert', '⚠ Intervenções');
+    if (subCorr) subCorr.textContent = `${totalCorr} falha(s) crítica(s)`;
+  } else {
+    setCardState('analysis-card-corr', 'analysis-badge-corr', 'ok', '✓ Zero falhas');
+    if (subCorr) subCorr.textContent = 'Sem falhas críticas';
+  }
+
+  const badgeDisp = document.getElementById('analysis-badge-disp');
+  if (availability >= 95) {
+    if (badgeDisp) { badgeDisp.className = 'metric-badge badge-info'; badgeDisp.textContent = 'Excelente'; }
+  } else if (availability >= 85) {
+    if (badgeDisp) { badgeDisp.className = 'metric-badge badge-warn'; badgeDisp.textContent = 'Moderada'; }
+  } else {
+    if (badgeDisp) { badgeDisp.className = 'metric-badge badge-alert'; badgeDisp.textContent = 'Crítica'; }
+  }
+
+  const elEmvText = document.getElementById('analysis-emv-text');
+  if (elEmvText) {
+    if (tunesYr.length > 0) {
+      const sortedTunes = [...tunesYr].sort((a, b) => new Date(toISODate(a.date)) - new Date(toISODate(b.date)));
+      const firstEMV = sortedTunes[0].emv;
+      const lastEMV = sortedTunes[sortedTunes.length - 1].emv;
+      const diff = lastEMV - firstEMV;
+      const signal = diff >= 0 ? '+' : '';
+      elEmvText.innerHTML = `O EMV variou <strong style="color:var(--amber)">${signal}${diff} V</strong> ao longo de ${selectedYear} (${firstEMV} → ${lastEMV} V). Limite de ação: <span style="color:var(--red)">2500 V</span>.`;
+    } else {
+      elEmvText.textContent = `Nenhum tune registrado no ano de ${selectedYear}.`;
+    }
+  }
+
+  const elInjText = document.getElementById('analysis-inj-text');
+  if (elInjText) {
+    elInjText.innerHTML = `Total registrado no ano: <strong style="color:var(--teal)">${totalInj} injeções</strong>.`;
+  }
+
+  const elLeakStatus = document.getElementById('analysis-leak-status');
+  if (elLeakStatus) {
+    if (tunesYr.length > 0) {
+      const highH2O = tunesYr.some(t => t.m18 > 10);
+      const highN2 = tunesYr.some(t => t.m28 > 10);
+      const highO2 = tunesYr.some(t => t.m32 > 2);
+      if (highH2O || highN2 || highO2) {
+        let issues = [];
+        if (highH2O) issues.push('umidade elevada (m/z 18 > 10%)');
+        if (highN2) issues.push('N₂ elevado (m/z 28 > 10%)');
+        if (highO2) issues.push('O₂ elevado (m/z 32 > 2%)');
+        elLeakStatus.innerHTML = `<span style="color:var(--red)">⚠ Alertas de vazamento ou contaminação detectados no período: ${issues.join(', ')}.</span>`;
+      } else {
+        elLeakStatus.innerHTML = `✓ Todos os valores de leak dentro dos limites recomendados em ${selectedYear}.`;
+      }
+    } else {
+      elLeakStatus.textContent = `Sem registros de tune para ${selectedYear}.`;
+    }
+  }
+
+  const elTimeline = document.getElementById('analysis-timeline');
+  if (elTimeline) {
+    const timelineEvents = [];
+
+    logsYr.forEach(l => {
+      if (l.septo === 'SIM') timelineEvents.push({ date: l.date, text: '<strong>Substituição de septo</strong> — Injetor', color: 'var(--green)' });
+      if (l.liner === 'SIM') timelineEvents.push({ date: l.date, text: '<strong>Substituição de liner</strong> — Injetor', color: 'var(--green)' });
+      if (l.limpfonte === 'SIM') timelineEvents.push({ date: l.date, text: '<strong>Limpeza da fonte de íons</strong> — Ion source cartridge lavada', color: 'var(--teal)' });
+      if (l.he === 'SIM') timelineEvents.push({ date: l.date, text: '<strong>Troca cilindro Hélio</strong> — Gás de arraste renovado', color: 'var(--green)' });
+      if (l.corte && parseFloat(l.corte) > 0) timelineEvents.push({ date: l.date, text: `<strong>Corte de coluna 1D</strong> — ${l.corte} cm removidos`, color: 'var(--teal)' });
+    });
+
+    timelineEvents.sort((a, b) => new Date(toISODate(a.date)) - new Date(toISODate(b.date)));
+
+    if (timelineEvents.length === 0) {
+      elTimeline.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:10px 0;">Nenhuma manutenção preventiva registrada neste período.</div>';
+    } else {
+      elTimeline.innerHTML = timelineEvents.map(e => `
+        <div class="tl-item">
+          <div><div class="tl-dot" style="background:${e.color}"></div></div>
+          <div class="tl-date">${e.date}</div>
+          <div class="tl-text">${e.text}</div>
+        </div>
+      `).join('');
+    }
+  }
+
+  const elRecs = document.getElementById('analysis-recommendations');
+  if (elRecs) {
+    const recsList = [];
+
+    if (tunesYr.length > 0) {
+      const lastTune = tunesYr[tunesYr.length - 1];
+      if (lastTune.emv >= 2500) {
+        recsList.push({ type: 'alert', icon: '⚠', text: `<strong>Substituir electron multiplier imediatamente</strong> — Tensão do multiplicador atingiu ${lastTune.emv} V.` });
+      } else if (lastTune.emv >= 2200) {
+        recsList.push({ type: 'warn', icon: '⚠', text: `<strong>Programar compra do multiplicador</strong> — Tensão do EMV em ${lastTune.emv} V (limite superior: 2500 V).` });
+      } else {
+        recsList.push({ type: 'ok', icon: '📈', text: `<strong>Multiplicador operacional</strong> — EMV em ${lastTune.emv} V (dentro da faixa ideal).` });
+      }
+    } else {
+      recsList.push({ type: 'warn', icon: '📈', text: `<strong>Nenhum tune realizado no ano</strong> — Recomendável calibrar/tunear o sistema semanalmente.` });
+    }
+
+    if (totalInj >= 800) {
+      recsList.push({ type: 'alert', icon: '⚠', text: `<strong>Substituir liner do injetor imediatamente</strong> — Acúmulo crítico de ${totalInj} injeções.` });
+    } else if (totalInj >= 600) {
+      recsList.push({ type: 'warn', icon: '⚠', text: `<strong>Agendar troca de liner</strong> — Liner com acúmulo de ${totalInj} injeções (limite prático: 800).` });
+    } else {
+      recsList.push({ type: 'ok', icon: '✓', text: `<strong>Consumíveis do injetor conformes</strong> — Liner acumula ${totalInj} injeções.` });
+    }
+
+    if (totalCorr > 0) {
+      recsList.push({ type: 'warn', icon: '🔧', text: `<strong>Revisar histórico de manutenções corretivas</strong> — ${totalCorr} interrupção(ões) não programada(s) registradas.` });
+    } else {
+      recsList.push({ type: 'ok', icon: '✓', text: `<strong>Nenhuma interrupção crítica registrada</strong> — Estabilidade mecânica e de vácuo mantida no ano.` });
+    }
+
+    elRecs.innerHTML = recsList.map(r => `
+      <div class="alert-banner ${r.type}" style="margin:0">
+        <span class="alert-icon">${r.icon}</span>
+        <div class="alert-text">${r.text}</div>
+      </div>
+    `).join('');
+  }
+
+  const elCorrList = document.getElementById('anual-corrective-list');
+  if (elCorrList) {
+    if (corrYr.length === 0) {
+      elCorrList.innerHTML = 'Nenhuma manutenção corretiva registrada no ano selecionado.';
+    } else {
+      elCorrList.innerHTML = corrYr.map(r => `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <span style="font-family:Space Mono,monospace;font-size:10px;color:var(--teal)">${r.date}</span>
+          &nbsp;·&nbsp;<strong>${r.resp}</strong> &nbsp;/&nbsp; Sup: ${r.sup}
+          <div style="color:var(--label);margin-top:4px"><strong style="color:var(--amber)">Problema:</strong> ${r.prob}</div>
+          <div style="color:var(--label);margin-top:2px"><strong style="color:var(--teal)">Ação:</strong> ${r.proc}</div>
+          <div style="color:var(--muted);margin-top:2px"><strong>Resultado:</strong> ${r.result}</div>
+        </div>
+      `).join('');
+    }
+  }
+
+  renderAnnualChartsForYear(selectedYear, tunesYr, logsYr);
+}
+
+function renderAnnualChartsForYear(year, tunesYr, logsYr) {
+  if (chartEmvAnual) chartEmvAnual.destroy();
+  if (chartInjAnual) chartInjAnual.destroy();
+  if (chartLeakAnual) chartLeakAnual.destroy();
+
+  const toISODate = s => {
+    if (!s) return '';
+    s = String(s).trim();
+    if (s.includes('-')) {
+      const parts = s.split('-');
+      if (parts[0].length === 4) return s;
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    if (s.includes('/')) {
+      const parts = s.split('/');
+      if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return s;
+  };
+
+  const sortedTunes = [...tunesYr].sort((a, b) => new Date(toISODate(a.date)) - new Date(toISODate(b.date)));
+  const labels = sortedTunes.map(t => t.date);
+  const emvs = sortedTunes.map(t => t.emv);
+
+  chartEmvAnual = new Chart(document.getElementById('emvAnual'), {
     type: 'line', plugins: [tealPlugin],
     data: {
-      labels: tuneData.map(t => t.date), datasets: [
-        { label: 'EMV (V)', data: tuneData.map(t => t.emv), borderColor: '#0d9488', backgroundColor: 'rgba(13,148,136,.08)', borderWidth: 2.5, pointBackgroundColor: '#0d9488', pointRadius: 5, tension: .4, fill: true },
-        { label: 'Limite (2500V)', data: Array(tuneData.length).fill(2500), borderColor: 'rgba(220,38,38,.5)', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
-        { label: 'Alerta (2200V)', data: Array(tuneData.length).fill(2200), borderColor: 'rgba(217,119,6,.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0 },
+      labels,
+      datasets: [
+        { label: 'EMV (V)', data: emvs, borderColor: '#0d9488', backgroundColor: 'rgba(13,148,136,.08)', borderWidth: 2.5, pointBackgroundColor: '#0d9488', pointRadius: 5, tension: .4, fill: true },
+        { label: 'Limite (2500V)', data: Array(labels.length).fill(2500), borderColor: 'rgba(220,38,38,.5)', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
+        { label: 'Alerta (2200V)', data: Array(labels.length).fill(2200), borderColor: 'rgba(217,119,6,.4)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0 },
       ]
     },
     options: {
@@ -1390,14 +1653,28 @@ function initAnualCharts() {
     }
   });
 
-  new Chart(document.getElementById('injAnual'), {
+  const injects = Array(12).fill(0);
+  logsYr.forEach(log => {
+    if (!log.date || !log.inj) return;
+    let m;
+    if (log.date.includes('-')) {
+      m = parseInt(log.date.split('-')[1]);
+    } else if (log.date.includes('/')) {
+      m = parseInt(log.date.split('/')[1]);
+    } else return;
+    if (m >= 1 && m <= 12) {
+      injects[m - 1] += parseInt(log.inj) || 0;
+    }
+  });
+
+  chartInjAnual = new Chart(document.getElementById('injAnual'), {
     type: 'bar', plugins: [tealPlugin],
     data: {
       labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
       datasets: [{
-        label: 'Injecoes', data: [48, 62, 35, 0, 54, 45, 71, 0, 38, 62, 27, 0],
-        backgroundColor: [48, 62, 35, 0, 54, 45, 71, 0, 38, 62, 27, 0].map(v => v === 0 ? 'rgba(226,232,240,.5)' : 'rgba(13,148,136,.35)'),
-        borderColor: [48, 62, 35, 0, 54, 45, 71, 0, 38, 62, 27, 0].map(v => v === 0 ? 'rgba(226,232,240,.8)' : '#0d9488'),
+        label: 'Injeções', data: injects,
+        backgroundColor: injects.map(v => v === 0 ? 'rgba(226,232,240,.5)' : 'rgba(13,148,136,.35)'),
+        borderColor: injects.map(v => v === 0 ? 'rgba(226,232,240,.8)' : '#0d9488'),
         borderWidth: 1, borderRadius: 4
       }]
     },
@@ -1408,15 +1685,15 @@ function initAnualCharts() {
     }
   });
 
-  new Chart(document.getElementById('leakAnual'), {
+  chartLeakAnual = new Chart(document.getElementById('leakAnual'), {
     type: 'line', plugins: [tealPlugin],
     data: {
-      labels: tuneData.map(t => t.date), datasets: [
-        { label: 'm/z 18 – Umidade (%)', data: tuneData.map(t => t.m18), borderColor: '#d97706', backgroundColor: 'rgba(217,119,6,.06)', borderWidth: 2, pointRadius: 4, tension: .4, fill: true },
-        { label: 'm/z 28 – N2 (%)', data: tuneData.map(t => t.m28), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.06)', borderWidth: 2, pointRadius: 4, tension: .4, fill: true },
-        { label: 'm/z 32 – O2 (%)', data: tuneData.map(t => t.m32), borderColor: '#dc2626', backgroundColor: 'rgba(220,38,38,.06)', borderWidth: 2, pointRadius: 4, tension: .4, fill: true },
-        { label: 'Limite m/z 18/28 (10%)', data: Array(tuneData.length).fill(10), borderColor: 'rgba(217,119,6,.4)', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
-        { label: 'Limite m/z 32 (2%)', data: Array(tuneData.length).fill(2), borderColor: 'rgba(220,38,38,.4)', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
+      labels, datasets: [
+        { label: 'm/z 18 – Umidade (%)', data: sortedTunes.map(t => t.m18), borderColor: '#d97706', backgroundColor: 'rgba(217,119,6,.06)', borderWidth: 2, pointRadius: 4, tension: .4, fill: true },
+        { label: 'm/z 28 – N2 (%)', data: sortedTunes.map(t => t.m28), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.06)', borderWidth: 2, pointRadius: 4, tension: .4, fill: true },
+        { label: 'm/z 32 – O2 (%)', data: sortedTunes.map(t => t.m32), borderColor: '#dc2626', backgroundColor: 'rgba(220,38,38,.06)', borderWidth: 2, pointRadius: 4, tension: .4, fill: true },
+        { label: 'Limite m/z 18/28 (10%)', data: Array(labels.length).fill(10), borderColor: 'rgba(217,119,6,.4)', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
+        { label: 'Limite m/z 32 (2%)', data: Array(labels.length).fill(2), borderColor: 'rgba(220,38,38,.4)', borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
       ]
     },
     options: {
@@ -1435,7 +1712,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function updateAlerts(totalInjections, lastTune) {
   const container = document.getElementById('alerts-container');
   if (!container) return;
-  
+
   let alertsHTML = '';
   let criticalCount = 0;
   let warnCount = 0;
@@ -1464,7 +1741,7 @@ function updateAlerts(totalInjections, lastTune) {
       if (lastTune.m18 >= 8) leakWarn.push('Umidade');
       if (lastTune.m28 >= 8) leakWarn.push('N₂');
       if (lastTune.m32 >= 1.5) leakWarn.push('O₂');
-      
+
       if (leakWarn.length > 0) {
         alertsHTML += `<div class="alert-banner warn"><span class="alert-icon">⚠</span><div class="alert-text"><strong>Vácuo — Níveis de Atenção</strong>Monitorar os seguintes canais: ${leakWarn.join(', ')}. Valores próximos ao limite.</div></div>`;
         warnCount++;
@@ -1512,7 +1789,7 @@ function renderStatusGeral() {
       else if (lastTune.emv >= 2200) updateMetricCard('kpi-emv', 'warn', '⚠ Próx. Limite');
       else updateMetricCard('kpi-emv', 'ok', '✓ Normal');
     }
-    
+
     if (el('kpi-18')) {
       el('kpi-18').innerHTML = `${lastTune.m18}<span class="metric-unit">%</span>`;
       if (lastTune.m18 >= 10) updateMetricCard('kpi-18', 'alert', '⚠ Vazamento');
@@ -1520,7 +1797,7 @@ function renderStatusGeral() {
       else updateMetricCard('kpi-18', 'ok', '✓ Baixo');
     }
     if (el('kpi-18-2')) el('kpi-18-2').innerHTML = `${lastTune.m18}%`;
-    
+
     if (el('kpi-28')) {
       el('kpi-28').innerHTML = `${lastTune.m28}<span class="metric-unit">%</span>`;
       if (lastTune.m28 >= 10) updateMetricCard('kpi-28', 'alert', '⚠ Vazamento');
@@ -1528,7 +1805,7 @@ function renderStatusGeral() {
       else updateMetricCard('kpi-28', 'ok', '✓ Normal');
     }
     if (el('kpi-28-2')) el('kpi-28-2').innerHTML = `${lastTune.m28}%`;
-    
+
     if (el('kpi-32')) {
       el('kpi-32').innerHTML = `${lastTune.m32}<span class="metric-unit">%</span>`;
       if (lastTune.m32 >= 2) updateMetricCard('kpi-32', 'alert', '⚠ Vazamento O₂');
@@ -1536,23 +1813,23 @@ function renderStatusGeral() {
       else updateMetricCard('kpi-32', 'ok', '✓ Normal');
     }
     if (el('kpi-32-2')) el('kpi-32-2').innerHTML = `${lastTune.m32}%`;
-    
+
     if (el('kpi-69')) el('kpi-69').innerHTML = `${lastTune.m69}%`;
     if (el('kpi-219')) el('kpi-219').innerHTML = `${lastTune.m219}%`;
     if (el('kpi-502')) el('kpi-502').innerHTML = `${lastTune.m502}%`;
-    
+
     if (el('kpi-fil')) {
       el('kpi-fil').innerHTML = `${lastTune.fil}`;
       updateMetricCard('kpi-fil', 'info', 'Em uso');
     }
-    
+
     if (el('kpi-tint')) {
       el('kpi-tint').innerHTML = `${lastTune.tint}<span class="metric-unit">°C</span>`;
       if (lastTune.tint >= 400) updateMetricCard('kpi-tint', 'alert', '⚠ Acima do Limite');
       else if (lastTune.tint >= 380) updateMetricCard('kpi-tint', 'warn', '⚠ Próx. Limite');
       else updateMetricCard('kpi-tint', 'ok', '✓ Normal');
     }
-    
+
     if (el('kpi-tune')) el('kpi-tune').innerHTML = `Tune #${lastTune.num} — ${lastTune.date}`;
   }
 
@@ -1573,7 +1850,7 @@ function renderStatusGeral() {
     else if (totalInjections >= 600) updateMetricCard('kpi-inj', 'warn', '⚠ Monitorar');
     else updateMetricCard('kpi-inj', 'ok', '✓ Normal');
   }
-  
+
   updateAlerts(totalInjections, lastTune);
 
   const linerPercent = Math.min((totalInjections / 500) * 100, 100);
@@ -1657,7 +1934,7 @@ function renderColumnHistory() {
     const totalCuts = savedLogs
       .filter(l => l.col_model === c.model)
       .reduce((sum, l) => sum + (parseFloat(l.corte) || 0), 0);
-    
+
     const remaining = c.initial_length - (totalCuts / 100); // cortes em cm, comp em m
     const statusClass = c.status === 'Em uso' ? 'badge-ok' : c.status === 'Arquivada' ? 'badge-alert' : 'badge-info';
 
@@ -1687,8 +1964,8 @@ async function deleteColumn(id) {
     columns = result.columns || [];
     renderColumnHistory();
     updateColumnSelects();
-  } catch (e) { 
-    console.error(e); 
+  } catch (e) {
+    console.error(e);
     alert('Erro ao excluir coluna: ' + e.message);
   }
 }
@@ -1697,7 +1974,7 @@ function updateColumnSelects() {
   const sel = document.getElementById('log-col-model');
   if (!sel) return;
   const activeCols = columns.filter(c => c.status === 'Em uso');
-  sel.innerHTML = '<option value="">— Selecione uma coluna —</option>' + 
+  sel.innerHTML = '<option value="">— Selecione uma coluna —</option>' +
     activeCols.map(c => `<option value="${c.model}">${c.model} (${c.type})</option>`).join('');
 }
 
@@ -1743,10 +2020,10 @@ function renderMaintenanceSchedule() {
 
     // Encontrar último registro desta manutenção
     const lastLog = [...savedLogs].reverse().find(l => l[item.id] === 'SIM');
-    
+
     if (lastLog) {
       lastDate = lastLog.date;
-      
+
       // Cálculo de injeções desde então
       if (item.id === 'septo' || item.id === 'liner') {
         const logsSince = savedLogs.filter(l => new Date(l.date) >= new Date(lastLog.date));
@@ -1754,10 +2031,10 @@ function renderMaintenanceSchedule() {
         nextInfo = `${totalInj} / ${item.limit} inj.`;
         if (totalInj >= item.limit) { status = 'alert'; statusLabel = 'TROCAR'; }
         else if (totalInj >= item.limit * 0.8) { status = 'warn'; statusLabel = 'Monitorar'; }
-      } 
+      }
       // Cálculo de dias
       else if (item.limit > 0) {
-        const diffDays = Math.floor((new Date() - new Date(lastLog.date)) / (1000*60*60*24));
+        const diffDays = Math.floor((new Date() - new Date(lastLog.date)) / (1000 * 60 * 60 * 24));
         nextInfo = `${diffDays} / ${item.limit} dias`;
         if (diffDays >= item.limit) { status = 'alert'; statusLabel = 'ATRASADO'; }
         else if (diffDays >= item.limit * 0.8) { status = 'warn'; statusLabel = 'Perto'; }
@@ -1817,20 +2094,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderStatusGeral();
     initCharts();
-    initAnualCharts();
+    populateAnalysisYears();
+    updateAnalysisPage();
     renderTuneTable();
     renderTroubleshoot();
     renderChecklist();
     renderLogsList();
     renderCorrectiveTable();
-    updateAnualCorrectiveList();
-    
+
     // Novas funções
     renderColumnHistory();
     updateColumnSelects();
     renderMaintenanceSchedule();
     updateAutoIncrementedFields();
-    
+
   } catch (e) {
     console.error("Falha ao se conectar com o servidor Node.js", e);
     alert("Não foi possível carregar os dados. Certifique-se de que o servidor Node.js está rodando.");
