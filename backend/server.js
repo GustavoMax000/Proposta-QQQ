@@ -51,6 +51,14 @@ async function initDB() {
             id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, model TEXT, serial TEXT, 
             install_date TEXT, initial_length REAL, status TEXT
         );
+        CREATE TABLE IF NOT EXISTS bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            operator TEXT NOT NULL,
+            requester TEXT NOT NULL,
+            obs TEXT
+        );
     `);
     
     // Tenta adicionar a coluna tamb a tabelas existentes
@@ -111,13 +119,15 @@ app.get('/api/data', async (req, res) => {
         injectRows.forEach(row => { injectByMonth[row.month_idx] = row.count; });
         
         const columns = await db.all('SELECT * FROM chromatographic_columns ORDER BY id DESC');
+        const bookings = await db.all('SELECT * FROM bookings ORDER BY start_date ASC, id ASC');
         
         res.json({
             tuneData: tuneData,
             injectByMonth: injectByMonth,
             savedLogs: logs,
             correctiveRecords: corrective,
-            columns: columns
+            columns: columns,
+            bookings: bookings
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -212,6 +222,56 @@ app.delete('/api/columns/:id', async (req, res) => {
         await db.run('DELETE FROM chromatographic_columns WHERE id = ?', [id]);
         const cols = await db.all('SELECT * FROM chromatographic_columns ORDER BY id DESC');
         res.json({ success: true, columns: cols });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Rotas de Agendamentos (Bookings)
+app.post('/api/bookings', async (req, res) => {
+    try {
+        const { start_date, end_date, operator, requester, obs } = req.body;
+        
+        if (!start_date || !end_date || !operator || !requester) {
+            return res.status(400).json({ error: "Campos obrigatórios ausentes" });
+        }
+        
+        if (start_date > end_date) {
+            return res.status(400).json({ error: "A data de início não pode ser posterior à data de término." });
+        }
+
+        // Validar sobreposição de períodos:
+        // Há sobreposição se: (start_date <= b.end_date) AND (end_date >= b.start_date)
+        const overlap = await db.get(
+            'SELECT COUNT(*) as count FROM bookings WHERE (start_date <= ?) AND (end_date >= ?)',
+            [end_date, start_date]
+        );
+
+        if (overlap.count > 0) {
+            return res.status(400).json({ error: "Já existe uma reserva para o equipamento no período selecionado." });
+        }
+
+        await db.run(
+            'INSERT INTO bookings (start_date, end_date, operator, requester, obs) VALUES (?, ?, ?, ?, ?)',
+            [start_date, end_date, operator, requester, obs || '']
+        );
+
+        appendTxtLog(`Nova reserva registrada de ${start_date} a ${end_date} por ${requester} (Op: ${operator})`);
+
+        const allBookings = await db.all('SELECT * FROM bookings ORDER BY start_date ASC, id ASC');
+        res.json({ success: true, bookings: allBookings });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/bookings/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.run('DELETE FROM bookings WHERE id = ?', [id]);
+        appendTxtLog(`Reserva ID #${id} excluída.`);
+        const allBookings = await db.all('SELECT * FROM bookings ORDER BY start_date ASC, id ASC');
+        res.json({ success: true, bookings: allBookings });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

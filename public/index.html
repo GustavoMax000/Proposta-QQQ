@@ -39,6 +39,9 @@
     <div class="nav-item active" onclick="showPage('status')">
       <span class="icon">◉</span> Status Geral
     </div>
+    <div class="nav-item" onclick="showPage('log')">
+      <span class="icon">📋</span> Registro Diário
+    </div>
     <div class="nav-item" onclick="showPage('tune')">
       <span class="icon">⚡</span> Histórico de Tune
     </div>
@@ -48,9 +51,8 @@
     <div class="nav-item" onclick="showPage('troubleshoot')">
       <span class="icon">🔍</span> Diagnóstico
     </div>
-    <div class="nav-item" onclick="showPage('log')">
-      <span class="icon">📋</span> Registro Diário
-    </div>
+    <div class="nav-item" onclick="showPage('booking')">
+      <span class="icon">📅</span> Calendário de Injeções
     </div>
     <div class="nav-item" onclick="showPage('analise')">
       <span class="icon">📊</span> Análise Anual
@@ -61,9 +63,12 @@
       <span class="icon">📄</span> Exportar PDF
     </div>
 
+    <!-- MINI CALENDÁRIO MENSUAL -->
+    <div id="sidebar-calendar-container" class="sidebar-mini-calendar"></div>
+
     <div class="sidebar-status">
-      <div class="status-pill">
-        <span class="status-dot"></span> Operacional
+      <div class="status-pill" id="sidebar-status-pill">
+        <span class="status-dot" id="sidebar-status-dot"></span> <span id="sidebar-status-text">Operacional</span>
       </div>
       <div style="font-size:10px;color:var(--muted);margin-top:6px;" id="sidebar-date"></div>
     </div>
@@ -602,115 +607,143 @@
       <div class="top-bar">
         <div class="page-title">Registro <span>Diário</span></div>
       </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Novo Registro — Operação / Manutenção Preventiva</div>
-          <div class="form-grid">
-            <div class="form-field">
-              <label>Data</label>
-              <input type="date" id="log-date" disabled>
-            </div>
-            <div class="form-field">
-              <label>Operador (iniciais)</label>
-              <input type="text" id="log-op" placeholder="ex: JRS">
-            </div>
-            <div class="form-field">
-              <label>Tamb (°C)</label>
-              <input type="number" id="log-temp" placeholder="23.0" value="23" step="0.1">
-            </div>
-            <div class="form-field">
-              <label>Sistema Ligado?</label>
-              <select id="log-sistema" placeholder="- Selecione -">
-                <option value="">— Selecione —</option>
-                <option value="Sim">Sim</option>
-                <option value="Não">Não</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label>Pressão Injetor (psi)</label>
-              <input type="number" id="log-psi" placeholder="14.0" step="0.1">
-            </div>
-            <div class="form-field">
-              <label>Nº Injeções</label>
-              <input type="number" id="log-inj" placeholder="0">
-            </div>
-            <div class="form-field">
-              <label>Corte da Coluna (cm)</label>
-              <input type="number" id="log-corte" placeholder="—" step="0.5">
-            </div>
-            <div class="form-field">
-              <label>tR do PI (min)</label>
-              <input type="number" id="log-trpi" placeholder="—" step="0.01">
-            </div>
-            <div class="form-field">
-              <label>Troca Cilindro He</label>
-              <select id="log-he">
-                <option value="">Não</option>
-                <option value="SIM">SIM</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label>Limpeza Injetor</label>
-              <select id="log-limpinj">
-                <option value="">Não</option>
-                <option value="SIM">SIM</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label>Troca Septo</label>
-              <select id="log-septo">
-                <option value="">Não</option>
-                <option value="SIM">SIM</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label>Troca Liner</label>
-              <select id="log-liner">
-                <option value="">Não</option>
-                <option value="SIM">SIM</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label>Troca Coluna</label>
-              <select id="log-col">
-                <option value="">Não</option>
-                <option value="SIM">SIM</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label>Selecione a Coluna</label>
-              <select id="log-col-model">
-                <option value="">— Selecione uma coluna —</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label>Limpeza Fonte</label>
-              <select id="log-limpfonte">
-                <option value="">Não</option>
-                <option value="SIM">SIM</option>
-              </select>
-            </div>
-            <div class="form-field form-full">
-              <label>Observações</label>
-              <textarea id="log-obs" placeholder="Registre qualquer ocorrência relevante..."></textarea>
+
+      <!-- Sub Tabs navigation -->
+      <div class="sub-tabs-container mb24"
+        style="display:flex; gap:16px; border-bottom:1px solid var(--border); padding-bottom:4px;">
+        <button class="sub-tab-btn active" id="log-tab-form-btn" onclick="switchLogTab('form')"
+          style="background:none; border:none; color:var(--teal); font-weight:600; padding:8px 16px; cursor:pointer; font-family:'Roboto', sans-serif; font-size:13px; border-bottom:2px solid var(--teal); transition:all 0.2s; display:flex; align-items:center; gap:6px;">
+          <span>📋</span> Adicionar Registro
+        </button>
+        <button class="sub-tab-btn" id="log-tab-list-btn" onclick="switchLogTab('list')"
+          style="background:none; border:none; color:var(--muted); font-weight:500; padding:8px 16px; cursor:pointer; font-family:'Roboto', sans-serif; font-size:13px; border-bottom:2px solid transparent; transition:all 0.2s; display:flex; align-items:center; gap:6px;">
+          <span>📜</span> Histórico de Registros
+        </button>
+      </div>
+
+      <!-- TAB Content 1: Form -->
+      <div id="log-tab-form-content">
+        <div style="display:flex; flex-direction:column; gap:20px; max-width:800px; margin:0 auto;">
+          <!-- Operation/Preventive Card -->
+          <div class="card">
+            <div class="card-title"
+              style="margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:10px;">Novo Registro —
+              Operação / Manutenção Preventiva</div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Data</label>
+                <input type="date" id="log-date" disabled>
+              </div>
+              <div class="form-field">
+                <label>Operador (iniciais)</label>
+                <input type="text" id="log-op" placeholder="ex: JRS">
+              </div>
+              <div class="form-field">
+                <label>Tamb (°C)</label>
+                <input type="number" id="log-temp" placeholder="23.0" value="23" step="0.1">
+              </div>
+              <div class="form-field">
+                <label>Sistema Ligado?</label>
+                <select id="log-sistema" placeholder="- Selecione -">
+                  <option value="">— Selecione —</option>
+                  <option value="Sim">Sim</option>
+                  <option value="Não">Não</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Pressão Injetor (psi)</label>
+                <input type="number" id="log-psi" placeholder="14.0" step="0.1">
+              </div>
+              <div class="form-field">
+                <label>Nº Injeções</label>
+                <input type="number" id="log-inj" placeholder="0">
+              </div>
+              <div class="form-field">
+                <label>Corte da Coluna (cm)</label>
+                <input type="number" id="log-corte" placeholder="—" step="0.5">
+              </div>
+              <div class="form-field">
+                <label>tR do PI (min)</label>
+                <input type="number" id="log-trpi" placeholder="—" step="0.01">
+              </div>
+              <div class="form-field">
+                <label>Troca Cilindro He</label>
+                <select id="log-he">
+                  <option value="">Não</option>
+                  <option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Limpeza Injetor</label>
+                <select id="log-limpinj">
+                  <option value="">Não</option>
+                  <option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Troca Septo</label>
+                <select id="log-septo">
+                  <option value="">Não</option>
+                  <option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Troca Liner</label>
+                <select id="log-liner">
+                  <option value="">Não</option>
+                  <option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Troca Coluna</label>
+                <select id="log-col">
+                  <option value="">Não</option>
+                  <option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Selecione a Coluna</label>
+                <select id="log-col-model">
+                  <option value="">— Selecione uma coluna —</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Limpeza Fonte</label>
+                <select id="log-limpfonte">
+                  <option value="">Não</option>
+                  <option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div class="form-field form-full">
+                <label>Observações</label>
+                <textarea id="log-obs" placeholder="Registre qualquer ocorrência relevante..."></textarea>
+              </div>
             </div>
           </div>
-          <div style="margin-top:4px;margin-bottom:16px;font-size:11px;color:var(--muted)">ℹ Preencha os campos de Tune
-            na coluna ao lado, se tune foi realizado no dia.</div>
-          <button class="btn btn-primary" onclick="saveLog()" style="width:100%;padding:10px">Salvar Registro</button>
-        </div>
-        <div>
-          <!-- Tune fields -->
-          <div class="card mb16">
-            <div class="card-title">Dados de Tune (se realizado)</div>
-            <div class="form-grid" style="grid-template-columns:1fr 1fr">
+
+          <!-- Tune Card (Stacked below) -->
+          <div class="card" id="log-tune-card" style="transition:opacity 0.3s;">
+            <div
+              style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+              <div class="card-title" style="margin:0;">Dados de Tune (se realizado)</div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="log-has-tune-checkbox" onchange="toggleTuneFields()"
+                  style="width:16px; height:16px; cursor:pointer;">
+                <label for="log-has-tune-checkbox"
+                  style="font-size:12px; font-weight:600; color:var(--teal); cursor:pointer; user-select:none;">Houve
+                  realização de Tune hoje?</label>
+              </div>
+            </div>
+
+            <div class="form-grid" id="log-tune-fields-container"
+              style="opacity:0.5; pointer-events:none; transition:opacity 0.3s;">
               <div class="form-field">
                 <label>Nº do Tune</label>
                 <input type="number" id="log-tunenum" placeholder="—" readonly>
               </div>
               <div class="form-field">
                 <label>Filamento</label>
-                <select id="log-fil">
+                <select id="log-fil" disabled>
                   <option value="">—</option>
                   <option>1</option>
                   <option>2</option>
@@ -718,43 +751,71 @@
               </div>
               <div class="form-field">
                 <label>T Interface (°C)</label>
-                <input type="number" id="log-tinterf" placeholder="280">
+                <input type="number" id="log-tinterf" placeholder="280" disabled>
               </div>
               <div class="form-field">
                 <label>EMV (V)</label>
-                <input type="number" id="log-emv" placeholder="1842">
+                <input type="number" id="log-emv" placeholder="1842" disabled>
               </div>
               <div class="form-field">
                 <label>m/z 69 (%)</label>
-                <input type="number" id="log-69" placeholder="100" step="0.1">
+                <input type="number" id="log-69" placeholder="100" step="0.1" disabled>
               </div>
               <div class="form-field">
                 <label>m/z 219 (%)</label>
-                <input type="number" id="log-219" placeholder="—" step="0.1">
+                <input type="number" id="log-219" placeholder="—" step="0.1" disabled>
               </div>
               <div class="form-field">
                 <label>m/z 502 (%)</label>
-                <input type="number" id="log-502" placeholder="—" step="0.1">
+                <input type="number" id="log-502" placeholder="—" step="0.1" disabled>
               </div>
               <div class="form-field">
                 <label>m/z 18 (umidade)</label>
-                <input type="number" id="log-18" placeholder="—" step="0.1">
+                <input type="number" id="log-18" placeholder="—" step="0.1" disabled>
               </div>
               <div class="form-field">
                 <label>m/z 28 (N₂)</label>
-                <input type="number" id="log-28" placeholder="—" step="0.1">
+                <input type="number" id="log-28" placeholder="—" step="0.1" disabled>
               </div>
               <div class="form-field">
                 <label>m/z 32 (O₂)</label>
-                <input type="number" id="log-32" placeholder="—" step="0.1">
+                <input type="number" id="log-32" placeholder="—" step="0.1" disabled>
               </div>
             </div>
           </div>
-          <!-- Saved logs -->
-          <div class="card">
-            <div class="card-title">Registros Salvos — Sessão Atual</div>
-            <div id="saved-logs" style="font-size:12px;color:var(--muted)">Nenhum registro salvo ainda nesta sessão.
-            </div>
+
+          <button class="btn btn-primary" onclick="saveLog()"
+            style="width:100%; padding:14px; font-size:14px; font-weight:600; margin-bottom:24px;">Salvar
+            Registro</button>
+        </div>
+      </div>
+
+      <!-- TAB Content 2: List -->
+      <div id="log-tab-list-content" style="display:none;">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:10px;">Histórico de Registros Diários</div>
+          <div style="font-size:12px; color:var(--muted); margin-bottom:20px;">Clique em qualquer linha do histórico
+            para abrir os detalhes completos do registro correspondente.</div>
+
+          <div style="overflow-x:auto;">
+            <table class="data-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border); text-align:left; background:var(--bg3);">
+                  <th style="padding:10px;">Data</th>
+                  <th style="padding:10px;">Operador</th>
+                  <th style="padding:10px;">Sistema</th>
+                  <th style="padding:10px;">Tamb (°C)</th>
+                  <th style="padding:10px;">Pressão (psi)</th>
+                  <th style="padding:10px;">Injeções</th>
+                  <th style="padding:10px;">Coluna</th>
+                  <th style="padding:10px;">Preventivas</th>
+                  <th style="padding:10px; text-align:center;">Tune?</th>
+                </tr>
+              </thead>
+              <tbody id="full-logs-table-body">
+                <!-- Preenchido via JS -->
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -847,6 +908,143 @@
         </div>
       </div>
     </div>
+    </div>
+
+    <!-- ===== PAGE: BOOKINGS ===== -->
+    <div class="page" id="page-booking">
+      <div class="top-bar">
+        <div class="page-title">Calendário de <span>Injeções</span></div>
+      </div>
+
+      <!-- SUB-TABS -->
+      <div class="sub-tabs-container mb24"
+        style="border-bottom:1px solid var(--border); display:flex; gap:20px; padding-bottom:0;">
+        <button class="tab-btn active" id="booking-tab-form-btn" onclick="switchBookingTab('form')"
+          style="background:none; border:none; padding:10px 16px 12px; cursor:pointer; font-size:14px; font-weight:600; color:var(--teal); border-bottom:2px solid var(--teal); transition:all 0.2s;">
+          Solicitar Reserva
+        </button>
+        <button class="tab-btn" id="booking-tab-list-btn" onclick="switchBookingTab('list')"
+          style="background:none; border:none; padding:10px 16px 12px; cursor:pointer; font-size:14px; font-weight:500; color:var(--muted); border-bottom:2px solid transparent; transition:all 0.2s;">
+          Visualizar Reservas & Calendário
+        </button>
+      </div>
+
+      <!-- TAB CONTENT: FORM -->
+      <div id="booking-tab-form-content">
+        <div class="card" style="max-width: 600px; margin: 0 auto;">
+          <div class="card-title">Nova Reserva de Equipamento</div>
+          <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+            <div class="form-field">
+              <label
+                style="display:block; font-size:11px; font-weight:600; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Dia
+                Início *</label>
+              <input type="date" id="book-start-date" required
+                style="width:100%; padding:10px; border:1px solid var(--border); border-radius:6px; background:var(--bg2); color:var(--text); font-size:13px;">
+            </div>
+            <div class="form-field">
+              <label
+                style="display:block; font-size:11px; font-weight:600; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Dia
+                Fim *</label>
+              <input type="date" id="book-end-date" required
+                style="width:100%; padding:10px; border:1px solid var(--border); border-radius:6px; background:var(--bg2); color:var(--text); font-size:13px;">
+            </div>
+            <div class="form-field">
+              <label
+                style="display:block; font-size:11px; font-weight:600; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Operador
+                Responsável *</label>
+              <input type="text" id="book-operator" placeholder="Iniciais (ex: GAW)" required
+                style="width:100%; padding:10px; border:1px solid var(--border); border-radius:6px; background:var(--bg2); color:var(--text); font-size:13px;">
+            </div>
+            <div class="form-field">
+              <label
+                style="display:block; font-size:11px; font-weight:600; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Solicitante
+                *</label>
+              <input type="text" id="book-requester" placeholder="Nome Completo do Técnico" required
+                style="width:100%; padding:10px; border:1px solid var(--border); border-radius:6px; background:var(--bg2); color:var(--text); font-size:13px;">
+            </div>
+            <div class="form-field" style="grid-column: span 2;">
+              <label
+                style="display:block; font-size:11px; font-weight:600; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Observações</label>
+              <textarea id="book-obs" rows="3" placeholder="Detalhes das injeções, amostras, etc..."
+                style="width:100%; padding:10px; border:1px solid var(--border); border-radius:6px; background:var(--bg2); color:var(--text); font-size:13px; font-family:inherit; resize:vertical;"></textarea>
+            </div>
+          </div>
+          <div style="margin-top:24px; display:flex; justify-content:flex-end;">
+            <button class="btn btn-primary" onclick="saveBooking()" style="padding:10px 24px; font-size:13px;">Registrar
+              Reserva</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT: LIST & CALENDAR -->
+      <div id="booking-tab-list-content" style="display:none;">
+
+        <!-- SEARCH & FILTER BAR -->
+        <div class="card mb24" style="padding: 16px;">
+          <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;">
+            <div style="flex:1; min-width:200px;">
+              <label
+                style="display:block; font-size:11px; font-weight:600; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Buscar
+                Agendamentos por Data</label>
+              <div style="display:flex; gap:8px;">
+                <input type="date" id="book-search-date"
+                  style="flex:1; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg2); color:var(--text); font-size:13px;">
+                <button class="btn btn-outline" onclick="searchBookingsByDate()">Buscar</button>
+                <button class="btn btn-outline" onclick="clearBookingSearch()">Limpar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2 mb24">
+          <!-- CALENDAR DISPLAY CARD -->
+          <div class="card">
+            <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Calendário Operacional</span>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;"
+                  onclick="prevBookingMonth()">◀</button>
+                <span id="booking-month-label"
+                  style="font-weight:700; font-size:13px; min-width:80px; text-align:center;">Maio 2026</span>
+                <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;"
+                  onclick="nextBookingMonth()">▶</button>
+              </div>
+            </div>
+
+            <div class="booking-calendar-grid" style="margin-top:16px;">
+              <!-- Calendar will be rendered here dynamically -->
+            </div>
+          </div>
+
+          <!-- RESERVAS LIST CARD -->
+          <div class="card">
+            <div class="card-title">Agendamentos Recentes</div>
+            <div style="overflow-x:auto; margin-top:12px;">
+              <table class="data-table" style="width:100%; border-collapse:collapse; text-align:left; font-size:13px;">
+                <thead>
+                  <tr style="border-bottom:2px solid var(--border); color:var(--muted);">
+                    <th style="padding:10px;">Período</th>
+                    <th style="padding:10px;">Solicitante</th>
+                    <th style="padding:10px;">Operador</th>
+                    <th style="padding:10px;">Observações</th>
+                    <th style="padding:10px; text-align:center;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="bookings-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- PAGINATION (GOOGLE STYLE) -->
+            <div id="bookings-pagination"
+              style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
+              <!-- Will be rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <!-- ===== PAGE: HELP ===== -->
@@ -1106,6 +1304,42 @@
       <div
         style="margin-top:24px; display:flex; justify-content:flex-end; border-top:1px solid var(--border); padding-top:16px;">
         <button class="btn btn-outline" onclick="closeTuneDetailModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALHES DO REGISTRO DIÁRIO -->
+  <div class="modal-overlay" id="log-detail-modal">
+    <div class="modal-content" style="max-width:750px; width:90%">
+      <div class="modal-header">
+        <div class="modal-title" id="log-det-title">Detalhes do Registro Diário</div>
+        <button class="modal-close" onclick="closeLogDetailModal()">×</button>
+      </div>
+      <div id="log-det-content" style="font-size:14px; line-height:1.5;">
+        <!-- Preenchido via JS -->
+      </div>
+      <div
+        style="margin-top:24px; display:flex; justify-content:flex-end; border-top:1px solid var(--border); padding-top:16px;">
+        <button class="btn btn-outline" onclick="closeLogDetailModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALHES DE AGENDAMENTO -->
+  <div class="modal-overlay" id="booking-detail-modal">
+    <div class="modal-content" style="max-width:500px">
+      <div class="modal-header">
+        <div class="modal-title">Detalhes da Reserva</div>
+        <button class="modal-close" onclick="closeBookingDetailModal()">×</button>
+      </div>
+      <div id="booking-det-content" style="font-size:14px; line-height:1.6; margin-top:16px;">
+        <!-- Preenchido via JS -->
+      </div>
+      <div
+        style="margin-top:24px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:16px;">
+        <button class="btn btn-danger" id="btn-delete-booking"
+          style="background:var(--red); border-color:var(--red); color:white;">Excluir Reserva</button>
+        <button class="btn btn-outline" onclick="closeBookingDetailModal()">Fechar</button>
       </div>
     </div>
   </div>

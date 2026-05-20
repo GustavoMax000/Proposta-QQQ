@@ -112,7 +112,6 @@ body {
 }
 
 .sidebar-status {
-  margin-top: auto;
   padding: 14px 18px;
   border-top: 1px solid var(--border);
 }
@@ -131,12 +130,32 @@ body {
   letter-spacing: .5px;
 }
 
+.status-pill.warn {
+  background: rgba(217, 119, 6, .12);
+  border-color: rgba(217, 119, 6, .3);
+  color: var(--amber);
+}
+
+.status-pill.alert {
+  background: rgba(220, 38, 38, .12);
+  border-color: rgba(220, 38, 38, .3);
+  color: var(--red);
+}
+
 .status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--green);
   animation: pulse 2s infinite;
+}
+
+.status-dot.warn {
+  background: var(--amber);
+}
+
+.status-dot.alert {
+  background: var(--red);
 }
 
 @keyframes pulse {
@@ -1020,4 +1039,179 @@ body {
 .leak-limit {
   font-size: 9px;
   color: var(--muted);
+}
+
+/* =====================================================================
+   INJECTION CALENDAR & SIDEBAR MINI CALENDAR
+   ===================================================================== */
+.booking-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.booking-calendar-header {
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 8px 0;
+  text-transform: uppercase;
+  text-align: center;
+  font-family: 'Space Mono', monospace;
+}
+
+.booking-calendar-day {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 6px;
+  min-height: 64px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  transition: all 0.2s;
+  cursor: default;
+}
+
+.booking-calendar-day.empty {
+  background: transparent;
+  border: none;
+  visibility: hidden;
+}
+
+.booking-calendar-day.today {
+  border: 2px solid var(--teal);
+  background: var(--bg2);
+}
+
+.booking-calendar-day.booked {
+  background: rgba(220, 38, 38, 0.05);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  color: var(--red);
+  cursor: pointer;
+}
+
+.booking-calendar-day.booked:hover {
+  background: rgba(220, 38, 38, 0.08);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.booking-calendar-day.booked span {
+  color: var(--red);
+}
+
+.booking-calendar-day .day-info {
+  font-size: 9px;
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--red);
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+  width: 100%;
+  text-align: center;
+}
+
+/* Sidebar mini calendar styles */
+.sidebar-mini-calendar {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+  width: 100%;
+}
+
+.sidebar-calendar-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--label);
+  margin-bottom: 8px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+
+.sidebar-calendar-header-day {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding-bottom: 2px;
+}
+
+.sidebar-calendar-day-cell {
+  font-size: 9px;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--text);
+  font-weight: 400;
+}
+
+.sidebar-calendar-day-cell.empty {
+  visibility: hidden;
+}
+
+.sidebar-calendar-day-cell.today {
+  border: 1px solid var(--teal);
+  font-weight: 600;
+}
+
+.sidebar-calendar-day-cell.booked {
+  background: var(--red);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Pagination styles */
+.pagination-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--label);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.pagination-link:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+  background: rgba(13, 148, 136, 0.05);
+}
+
+.pagination-link.active {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.pagination-link.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  background: var(--bg3);
 }

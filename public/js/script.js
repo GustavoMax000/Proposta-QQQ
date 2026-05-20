@@ -4,6 +4,11 @@
 let tuneData = [];
 let injectByMonth = [];
 let columns = [];
+let bookingsData = [];
+let calendarCurrentYear = new Date().getFullYear();
+let calendarCurrentMonth = new Date().getMonth();
+let bookingCurrentPage = 1;
+let bookingSearchDate = '';
 let chartEmvAnual = null;
 let chartInjAnual = null;
 let chartLeakAnual = null;
@@ -467,18 +472,347 @@ function toggleCheck(i, row) {
 // =====================================================================
 let savedLogs = [];
 
+// =====================================================================
+// LOG TABS & TOGGLES
+// =====================================================================
+function switchLogTab(tab) {
+  const formBtn = document.getElementById('log-tab-form-btn');
+  const listBtn = document.getElementById('log-tab-list-btn');
+  const formContent = document.getElementById('log-tab-form-content');
+  const listContent = document.getElementById('log-tab-list-content');
+
+  if (!formBtn || !listBtn) return;
+
+  if (tab === 'form') {
+    formBtn.classList.add('active');
+    formBtn.style.color = 'var(--teal)';
+    formBtn.style.borderBottom = '2px solid var(--teal)';
+    formBtn.style.fontWeight = '600';
+
+    listBtn.classList.remove('active');
+    listBtn.style.color = 'var(--muted)';
+    listBtn.style.borderBottom = '2px solid transparent';
+    listBtn.style.fontWeight = '500';
+
+    formContent.style.display = 'block';
+    listContent.style.display = 'none';
+  } else {
+    listBtn.classList.add('active');
+    listBtn.style.color = 'var(--teal)';
+    listBtn.style.borderBottom = '2px solid var(--teal)';
+    listBtn.style.fontWeight = '600';
+
+    formBtn.classList.remove('active');
+    formBtn.style.color = 'var(--muted)';
+    formBtn.style.borderBottom = '2px solid transparent';
+    formBtn.style.fontWeight = '500';
+
+    formContent.style.display = 'none';
+    listContent.style.display = 'block';
+
+    renderFullLogsList();
+  }
+}
+
+function toggleTuneFields() {
+  const checkbox = document.getElementById('log-has-tune-checkbox');
+  const container = document.getElementById('log-tune-fields-container');
+  if (!checkbox || !container) return;
+
+  const inputs = container.querySelectorAll('input, select');
+
+  if (checkbox.checked) {
+    container.style.opacity = '1';
+    container.style.pointerEvents = 'auto';
+    inputs.forEach(input => {
+      input.removeAttribute('disabled');
+    });
+  } else {
+    container.style.opacity = '0.5';
+    container.style.pointerEvents = 'none';
+    inputs.forEach(input => {
+      if (input.id !== 'log-tunenum') {
+        input.setAttribute('disabled', 'true');
+        input.value = '';
+      } else {
+        input.setAttribute('disabled', 'true');
+      }
+    });
+  }
+}
+
+// =====================================================================
+// RENDERING AND DETAIL MODALS
+// =====================================================================
 function renderLogsList() {
-  const c = document.getElementById('saved-logs');
-  if (!c) return;
-  c.innerHTML = savedLogs.map(l => `
-    <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
-      <strong style="color:var(--teal)">${l.date}</strong> · ${l.op} · 
-      ${l.psi ? '<span style=color:var(--label)>' + l.psi + ' psi</span> · ' : ''} 
-      ${l.inj ? l.inj + ' inj. · ' : ''}
-      ${l.col_model ? '<span style="color:var(--blue)">' + l.col_model + '</span> · ' : ''}
-      <span style="color:var(--muted)">${l.obs || 'Sem obs.'}</span>
+  // Mantido para compatibilidade, renderiza a lista completa
+  renderFullLogsList();
+}
+
+function renderFullLogsList() {
+  const tbody = document.getElementById('full-logs-table-body');
+  if (!tbody) return;
+
+  const toISO = (dStr) => {
+    if (!dStr) return '';
+    let parts;
+    dStr = dStr.trim();
+    if (dStr.includes('-')) {
+      parts = dStr.split('-');
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    } else if (dStr.includes('/')) {
+      parts = dStr.split('/');
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return dStr;
+  };
+
+  // List descending order by date (and ID)
+  const sorted = [...savedLogs].sort((a, b) => {
+    const dateA = new Date(toISO(a.date));
+    const dateB = new Date(toISO(b.date));
+    if (dateA - dateB !== 0) return dateB - dateA;
+    return b.id - a.id;
+  });
+
+  tbody.innerHTML = sorted.map(l => {
+    const logIsoDate = toISO(l.date);
+    const hasTune = tuneData.some(t => toISO(t.date) === logIsoDate);
+
+    // Build list of preventives
+    let preventives = [];
+    if (l.he === 'SIM') preventives.push('Hélio');
+    if (l.limpinj === 'SIM') preventives.push('Injetor');
+    if (l.septo === 'SIM') preventives.push('Septo');
+    if (l.liner === 'SIM') preventives.push('Liner');
+    if (l.limpfonte === 'SIM') preventives.push('Fonte');
+    if (l.corte && parseFloat(l.corte) > 0) preventives.push(`Corte (${l.corte}cm)`);
+
+    const preventivesStr = preventives.length > 0 ? preventives.join(', ') : '—';
+    const systemClass = l.sistema === 'Sim' || l.sistema === 'Normal' ? 'ok' : 'alert';
+    const systemLabel = l.sistema || 'Sim';
+
+    return `
+      <tr style="cursor:pointer;" onclick="openLogDetailModal(${l.id})">
+        <td style="padding:10px; font-weight:bold; color:var(--teal);">${l.date}</td>
+        <td style="padding:10px;">${l.op || '—'}</td>
+        <td style="padding:10px;"><span class="metric-badge badge-${systemClass === 'ok' ? 'ok' : 'alert'}" style="margin-top:0;">${systemLabel}</span></td>
+        <td style="padding:10px; font-family:Space Mono, monospace;">${l.tamb || '—'} °C</td>
+        <td style="padding:10px; font-family:Space Mono, monospace;">${l.psi || '—'} psi</td>
+        <td style="padding:10px; font-family:Space Mono, monospace;">${l.inj || '0'}</td>
+        <td style="padding:10px; color:var(--blue);">${l.col_model || '—'}</td>
+        <td style="padding:10px; color:var(--muted);">${preventivesStr}</td>
+        <td style="padding:10px; text-align:center;">
+          ${hasTune ? '<span style="color:var(--teal); font-size:16px;">⚡</span>' : '<span style="color:var(--muted); font-size:12px;">—</span>'}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openLogDetailModal(logId) {
+  const log = savedLogs.find(l => l.id === logId);
+  if (!log) {
+    alert('Registro diário não encontrado.');
+    return;
+  }
+
+  const formatDisplayDate = (dStr) => {
+    if (!dStr) return '—';
+    if (dStr.includes('-')) {
+      const p = dStr.split('-');
+      return `${p[2]}/${p[1]}/${p[0]}`;
+    }
+    return dStr;
+  };
+
+  const modal = document.getElementById('log-detail-modal');
+  const title = document.getElementById('log-det-title');
+  const content = document.getElementById('log-det-content');
+
+  title.innerHTML = `Registro Diário — <span style="color:var(--teal)">${formatDisplayDate(log.date)}</span>`;
+
+  const toISO = (dStr) => {
+    if (!dStr) return '';
+    let parts;
+    dStr = dStr.trim();
+    if (dStr.includes('-')) {
+      parts = dStr.split('-');
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    } else if (dStr.includes('/')) {
+      parts = dStr.split('/');
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return dStr;
+  };
+  const logIsoDate = toISO(log.date);
+  const matchedTune = tuneData.find(t => toISO(t.date) === logIsoDate);
+
+  let preventives = [];
+  if (log.he === 'SIM') preventives.push('Troca Cilindro Hélio');
+  if (log.limpinj === 'SIM') preventives.push('Limpeza do Injetor');
+  if (log.septo === 'SIM') preventives.push('Substituição de Septo');
+  if (log.liner === 'SIM') preventives.push('Substituição de Liner');
+  if (log.limpfonte === 'SIM') preventives.push('Limpeza da Fonte de Íons');
+  if (log.corte && parseFloat(log.corte) > 0) preventives.push(`Corte de Coluna (${log.corte} cm)`);
+
+  let preventivesHTML = '';
+  if (preventives.length > 0) {
+    preventivesHTML = preventives.map(p => `
+      <div style="display:inline-flex; align-items:center; background:rgba(13,148,136,.12); color:var(--teal); padding:4px 8px; border-radius:4px; margin-right:6px; margin-bottom:6px; font-size:11px; font-weight:500;">
+        <span style="margin-right:4px;">✓</span> ${p}
+      </div>
+    `).join('');
+  } else {
+    preventivesHTML = '<span style="font-size:11px; color:var(--muted)">Nenhuma intervenção preventiva realizada.</span>';
+  }
+
+  let logInfoHTML = `
+    <div style="background:var(--bg2); padding:16px; border-radius:8px; border:1px solid var(--border); margin-bottom:16px;">
+      <h3 style="color:var(--teal); margin-top:0; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; font-size:15px;">
+        📋 Informações Gerais
+      </h3>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-bottom:16px;">
+        <div>
+          <span style="color:var(--muted); font-size:11px; display:block;">OPERADOR</span>
+          <strong style="color:var(--text); font-size:13px;">${log.op || '—'}</strong>
+        </div>
+        <div>
+          <span style="color:var(--muted); font-size:11px; display:block;">STATUS DO SISTEMA</span>
+          <strong style="color:var(--text); font-size:13px;">${log.sistema || '—'}</strong>
+        </div>
+        <div>
+          <span style="color:var(--muted); font-size:11px; display:block;">PRESSÃO INJETOR</span>
+          <strong style="color:var(--text); font-size:13px;">${log.psi ? log.psi + ' psi' : '—'}</strong>
+        </div>
+        <div>
+          <span style="color:var(--muted); font-size:11px; display:block;">TEMP. AMBIENTE (Tamb)</span>
+          <strong style="color:var(--text); font-size:13px;">${log.tamb ? log.tamb + ' °C' : '—'}</strong>
+        </div>
+        <div>
+          <span style="color:var(--muted); font-size:11px; display:block;">INJEÇÕES REALIZADAS</span>
+          <strong style="color:var(--text); font-size:13px;">${log.inj || 0} injeções</strong>
+        </div>
+        <div>
+          <span style="color:var(--muted); font-size:11px; display:block;">tR PADRÃO INTERNO (PI)</span>
+          <strong style="color:var(--text); font-size:13px;">${log.trpi ? log.trpi + ' min' : '—'}</strong>
+        </div>
+      </div>
+
+      ${log.col_model ? `
+        <div style="background:var(--bg3); padding:10px; border-radius:6px; margin-bottom:16px; border-left:3px solid var(--blue)">
+          <span style="color:var(--muted); font-size:10px; display:block;">COLUNA CROMATOGRÁFICA EM USO</span>
+          <strong style="color:var(--blue); font-size:12px;">${log.col_model}</strong>
+          ${log.corte ? `<span style="color:var(--text); font-size:11px; margin-left:10px;">(Corte: -${log.corte} cm)</span>` : ''}
+        </div>
+      ` : ''}
+
+      <h4 style="color:var(--text); margin-top:0; margin-bottom:8px; font-size:12px; font-weight:600;">Intervenções Realizadas</h4>
+      <div style="margin-bottom:16px;">
+        ${preventivesHTML}
+      </div>
+
+      <h4 style="color:var(--text); margin-top:0; margin-bottom:4px; font-size:12px; font-weight:600;">Observações</h4>
+      <div style="background:var(--bg3); padding:10px; border-radius:6px; font-size:12px; color:var(--label); font-style:italic; line-height:1.4; border:1px solid var(--border)">
+        ${log.obs || 'Nenhuma observação registrada.'}
+      </div>
     </div>
-  `).join('');
+  `;
+
+  let tuneHTML = '';
+  if (matchedTune) {
+    const emvClass = matchedTune.emv > 2200 ? 'alert' : matchedTune.emv > 1800 ? 'warn' : 'ok';
+    const m18Class = matchedTune.m18 > 10 ? 'alert' : matchedTune.m18 > 7 ? 'warn' : 'ok';
+    const m28Class = matchedTune.m28 > 10 ? 'alert' : matchedTune.m28 > 7 ? 'warn' : 'ok';
+    const m32Class = matchedTune.m32 > 2 ? 'alert' : matchedTune.m32 > 1.5 ? 'warn' : 'ok';
+
+    const emvLabel = matchedTune.emv > 2200 ? 'Substituir Multiplicador' : matchedTune.emv > 1800 ? 'Monitorar Desgaste' : 'Normal';
+    const m18Label = matchedTune.m18 > 10 ? 'Umidade Elevada' : matchedTune.m18 > 7 ? 'Atenção' : 'Baixo';
+    const m28Label = matchedTune.m28 > 10 ? 'Vazamento de Ar' : matchedTune.m28 > 7 ? 'Atenção' : 'Normal';
+    const m32Label = matchedTune.m32 > 2 ? 'Vazamento O₂ Crítico' : matchedTune.m32 > 1.5 ? 'Atenção O₂' : 'Normal';
+
+    tuneHTML = `
+      <div style="background:var(--bg2); padding:16px; border-radius:8px; border:1px solid var(--border)">
+        <h3 style="color:var(--teal); margin-top:0; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; font-size:15px; display:flex; justify-content:space-between; align-items:center;">
+          <span>⚡ Dados de Tune Associados</span>
+          <span class="metric-badge badge-ok" style="font-size:11px">Tune #${matchedTune.num}</span>
+        </h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+          <div>
+            <span style="color:var(--muted); font-size:11px; display:block;">FILAMENTO ACIONADO</span>
+            <strong style="color:var(--text); font-size:13px;">Filamento ${matchedTune.fil}</strong>
+          </div>
+          <div>
+            <span style="color:var(--muted); font-size:11px; display:block;">TEMP. INTERFACE</span>
+            <strong style="color:var(--text); font-size:13px;">${matchedTune.tint || '—'} °C</strong>
+          </div>
+        </div>
+
+        <div class="metric-card ${emvClass}" style="padding:12px; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="metric-title" style="font-size:11px;">EMV (Tensão do Multiplicador)</span>
+            <span class="metric-badge badge-${emvClass}" style="font-size:9px;">${emvLabel}</span>
+          </div>
+          <div class="metric-value" style="font-size:20px; margin-top:4px;">${matchedTune.emv}<span class="metric-unit">V</span></div>
+        </div>
+
+        <h4 style="color:var(--text); margin-top:0; margin-bottom:8px; font-size:12px; font-weight:600;">Abundâncias PFTBA (Calibrante)</h4>
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:16px;">
+          <div style="background:var(--bg3); padding:8px; border-radius:6px; text-align:center;">
+            <div style="font-size:10px; color:var(--muted)">m/z 69</div>
+            <div style="font-size:12px; font-weight:bold; color:var(--text)">${matchedTune.m69}%</div>
+          </div>
+          <div style="background:var(--bg3); padding:8px; border-radius:6px; text-align:center;">
+            <div style="font-size:10px; color:var(--muted)">m/z 219</div>
+            <div style="font-size:12px; font-weight:bold; color:var(--text)">${matchedTune.m219}%</div>
+          </div>
+          <div style="background:var(--bg3); padding:8px; border-radius:6px; text-align:center;">
+            <div style="font-size:10px; color:var(--muted)">m/z 502</div>
+            <div style="font-size:12px; font-weight:bold; color:var(--text)">${matchedTune.m502}%</div>
+          </div>
+        </div>
+
+        <h4 style="color:var(--text); margin-top:0; margin-bottom:8px; font-size:12px; font-weight:600;">Canais de Diagnóstico</h4>
+        <div style="display:grid; grid-template-columns:1fr; gap:6px;">
+          <div style="background:var(--bg3); padding:6px 10px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11px; color:var(--text)">m/z 18 (Umidade)</span>
+            <span class="metric-badge badge-${m18Class}" style="font-size:9px;">${matchedTune.m18}% · ${m18Label}</span>
+          </div>
+          <div style="background:var(--bg3); padding:6px 10px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11px; color:var(--text)">m/z 28 (Nitrogênio)</span>
+            <span class="metric-badge badge-${m28Class}" style="font-size:9px;">${matchedTune.m28}% · ${m28Label}</span>
+          </div>
+          <div style="background:var(--bg3); padding:6px 10px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11px; color:var(--text)">m/z 32 (Oxigênio)</span>
+            <span class="metric-badge badge-${m32Class}" style="font-size:9px;">${matchedTune.m32}% · ${m32Label}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    tuneHTML = `
+      <div style="background:var(--bg2); padding:16px; border-radius:8px; border:1px solid var(--border); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; height:100%; min-height:220px;">
+        <span style="font-size:32px; margin-bottom:12px;">⚡</span>
+        <h4 style="color:var(--muted); margin:0 0 8px 0; font-size:14px;">Nenhum Tune Realizado</h4>
+        <p style="color:var(--label); font-size:11px; max-width:240px; margin:0; line-height:1.4;">
+          Não há registro de calibração ou tune associado a esta data.
+        </p>
+      </div>
+    `;
+  }
+
+  content.innerHTML = `
+    <div style="display:grid; grid-template-columns:${matchedTune ? '1fr 1fr' : '1fr'}; gap:20px;">
+      ${logInfoHTML}
+      ${tuneHTML}
+    </div>
+  `;
+
+  modal.classList.add('show');
+}
+
+function closeLogDetailModal() {
+  document.getElementById('log-detail-modal').classList.remove('show');
 }
 
 async function saveLog() {
@@ -486,10 +820,12 @@ async function saveLog() {
   const op = document.getElementById('log-op').value.trim();
   const temp = document.getElementById('log-temp').value.trim();
   const sistema = document.getElementById('log-sistema').value;
+  const coluna = document.getElementById('log-col-model').value;
 
   if (!op) { alert('O campo Operador (iniciais) é obrigatório.'); return; }
   if (!temp) { alert('O campo Temperatura Ambiente (Tamb) é obrigatório.'); return; }
   if (!sistema) { alert('O campo Sistema é obrigatório.'); return; }
+  if (!coluna) { alert('O campo Coluna é obrigatório.'); return; }
 
   const psi = document.getElementById('log-psi').value;
   const inj = document.getElementById('log-inj').value;
@@ -513,10 +849,14 @@ async function saveLog() {
     tamb: parseFloat(temp)
   };
 
-  const tuneNum = document.getElementById('log-tunenum').value;
-  const emvVal = document.getElementById('log-emv').value;
-  const filVal = document.getElementById('log-fil').value;
-  const hasTune = tuneNum && (emvVal || filVal);
+  const hasTune = document.getElementById('log-has-tune-checkbox').checked;
+
+  if (hasTune) {
+    const filVal = document.getElementById('log-fil').value;
+    const emvVal = document.getElementById('log-emv').value;
+    if (!filVal) { alert('Por favor, selecione o Filamento.'); return; }
+    if (!emvVal) { alert('Por favor, informe o valor de EMV (V).'); return; }
+  }
 
   try {
     const response = await fetch('/api/logs', {
@@ -526,9 +866,10 @@ async function saveLog() {
     });
     const result = await response.json();
     savedLogs = result.savedLogs;
-    renderLogsList();
+    renderFullLogsList();
 
     if (hasTune) {
+      const tuneNum = document.getElementById('log-tunenum').value;
       const tuneEntry = {
         num: parseInt(tuneNum),
         date: date,
@@ -559,6 +900,12 @@ async function saveLog() {
     ['log-sistema', 'log-he', 'log-limpinj', 'log-septo', 'log-liner', 'log-col', 'log-limpfonte', 'log-fil'].forEach(id => {
       const el = document.getElementById(id); if (el) el.selectedIndex = 0;
     });
+
+    const chk = document.getElementById('log-has-tune-checkbox');
+    if (chk) {
+      chk.checked = false;
+      toggleTuneFields();
+    }
 
     // Atualiza o dashboard para refletir as mudanças (ex: contador de injeções)
     renderStatusGeral();
@@ -632,16 +979,16 @@ async function generatePDF() {
     doc.text('Thermo Scientific · Triple Quadrupole GC-MS · Ionização EI', 105, 49, { align: 'center' });
 
     // Summary KPIs — computed from real data
-    const yr = new Date().getFullYear();
-    const toISO = s => {
-      if (!s) return '';
-      s = s.trim();
-      if (s.includes('/')) { const p = s.split('/'); return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`; }
-      return s;
+    const yearSelect = document.getElementById('analysis-year-select');
+    const yr = yearSelect ? parseInt(yearSelect.value) : new Date().getFullYear();
+    const parseYear = s => {
+      if (!s) return null;
+      const m = String(s).trim().match(/\b(20\d{2})\b/);
+      return m ? parseInt(m[1]) : null;
     };
-    const tunesYr = tuneData.filter(t => toISO(t.date).startsWith(String(yr)));
-    const logsYr = savedLogs.filter(l => toISO(l.date).startsWith(String(yr)));
-    const corrYr = correctiveRecords.filter(r => toISO(r.date).startsWith(String(yr)));
+    const tunesYr = tuneData.filter(t => parseYear(t.date) === yr);
+    const logsYr = savedLogs.filter(l => parseYear(l.date) === yr);
+    const corrYr = correctiveRecords.filter(r => parseYear(r.date) === yr);
 
     const totalInj = logsYr.reduce((s, l) => s + (parseInt(l.inj) || 0), 0);
     const limpFonte = logsYr.filter(l => l.limpfonte === 'SIM').length;
@@ -684,6 +1031,7 @@ async function generatePDF() {
 
     const kpiColor = (st) => st === 'ok' ? green : st === 'warn' ? amber : red;
     const kpis = [
+      //[String(tunesYr.length), 'Tunes Realizados', 'ok'],
       [String(tunesYr.length), 'Tunes Realizados', 'ok'],
       [String(totalInj), 'Total de Injeções', 'ok'],
       [String(limpFonte), 'Limpezas da Fonte', limpFonte === 0 ? 'warn' : 'ok'],
@@ -1310,6 +1658,9 @@ function showPageWithTuneData(tuneDate, tuneNum) {
   closeTuneDetailModal();
   showPage('log');
 
+  // Ensure we are on the form tab
+  switchLogTab('form');
+
   const toISO = (dStr) => {
     if (!dStr) return '';
     let parts;
@@ -1335,6 +1686,13 @@ function showPageWithTuneData(tuneDate, tuneNum) {
   const tuneNumInput = document.getElementById('log-tunenum');
   if (tuneNumInput) {
     tuneNumInput.value = tuneNum;
+  }
+
+  // Enable the tune fields and set the checkbox to checked
+  const checkbox = document.getElementById('log-has-tune-checkbox');
+  if (checkbox) {
+    checkbox.checked = true;
+    toggleTuneFields();
   }
 }
 
@@ -1779,6 +2137,106 @@ function updateMetricCard(id, state, message) {
   }
 }
 
+function updateSidebarStatus(linerInjections, lastTune) {
+  const pill = document.getElementById('sidebar-status-pill');
+  const dot = document.getElementById('sidebar-status-dot');
+  const text = document.getElementById('sidebar-status-text');
+  if (!pill || !dot || !text) return;
+
+  const lastLog = savedLogs.length > 0 ? savedLogs[savedLogs.length - 1] : null;
+  const lastSistema = lastLog ? String(lastLog.sistema).trim() : 'Sim';
+  const isSistemaNao = lastSistema === 'Não' || lastSistema === 'Nao' || lastSistema.toLowerCase().startsWith('n');
+
+  let isAlert = false;
+  let isNoOperacional = false;
+
+  // 1. Verificar limites do Liner
+  if (linerInjections >= 800) {
+    isNoOperacional = true;
+  } else if (linerInjections >= 600) {
+    isAlert = true;
+  }
+
+  // 2. Verificar limites do Tune
+  if (lastTune) {
+    // Críticos (Não Operacional)
+    if (lastTune.emv >= 2500) isNoOperacional = true;
+    if (lastTune.m18 >= 10) isNoOperacional = true;
+    if (lastTune.m28 >= 10) isNoOperacional = true;
+    if (lastTune.m32 >= 2) isNoOperacional = true;
+    if (lastTune.tint >= 400) isNoOperacional = true;
+
+    // Alertas
+    if (lastTune.emv >= 2200 && lastTune.emv < 2500) isAlert = true;
+    if (lastTune.m18 >= 8 && lastTune.m18 < 10) isAlert = true;
+    if (lastTune.m28 >= 8 && lastTune.m28 < 10) isAlert = true;
+    if (lastTune.m32 >= 1.5 && lastTune.m32 < 2) isAlert = true;
+    if (lastTune.tint >= 380 && lastTune.tint < 400) isAlert = true;
+  }
+
+  // 3. Verificar o status de "sistema" do último log
+  if (isSistemaNao) {
+    isNoOperacional = true;
+  }
+
+  // Reset classes
+  pill.classList.remove('warn', 'alert');
+  dot.classList.remove('warn', 'alert');
+
+  if (isNoOperacional) {
+    pill.classList.add('alert');
+    dot.classList.add('alert');
+    text.textContent = 'Não Operacional';
+  } else if (isAlert) {
+    pill.classList.add('warn');
+    dot.classList.add('warn');
+    text.textContent = 'Alerta';
+  } else {
+    text.textContent = 'Operacional';
+  }
+}
+
+function showConnectionError(type, detail) {
+  console.error(`[Connection Error] Type: ${type}, Detail:`, detail);
+  let title = "";
+  let message = "";
+  
+  if (type === "server") {
+    title = "Erro de Conexão com o Servidor";
+    message = "Não foi possível se conectar ao servidor Node.js. Por favor, verifique se o servidor está rodando (porta 3000).";
+  } else {
+    title = "Erro de Conexão com o Banco de Dados";
+    message = `O servidor está rodando, mas não conseguiu acessar o banco de dados. Detalhe: ${detail || 'Erro desconhecido'}`;
+  }
+
+  alert(`❌ ${title}\n\n${message}`);
+
+  const banner = document.createElement('div');
+  banner.className = 'connection-error-banner';
+  banner.style.cssText = `
+    background: #fef2f2;
+    border: 1px solid #f87171;
+    color: #991b1b;
+    padding: 16px 20px;
+    margin: 20px;
+    border-radius: 8px;
+    font-family: 'Roboto', sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 1000;
+  `;
+  banner.innerHTML = `
+    <h3 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
+      <span>⚠️</span> ${title}
+    </h3>
+    <p style="margin:0;font-size:12px;opacity:0.9;">${message}</p>
+  `;
+  
+  const mainEl = document.getElementById('main') || document.body;
+  mainEl.insertBefore(banner, mainEl.firstChild);
+}
+
 function renderStatusGeral() {
   const lastTune = tuneData.length > 0 ? tuneData[tuneData.length - 1] : null;
   if (lastTune) {
@@ -1833,6 +2291,20 @@ function renderStatusGeral() {
     if (el('kpi-tune')) el('kpi-tune').innerHTML = `Tune #${lastTune.num} — ${lastTune.date}`;
   }
 
+  const toISO = (dStr) => {
+    if (!dStr) return '';
+    let parts;
+    dStr = dStr.trim();
+    if (dStr.includes('-')) {
+      parts = dStr.split('-');
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    } else if (dStr.includes('/')) {
+      parts = dStr.split('/');
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return dStr;
+  };
+
   let totalInjections = 0;
   let lastPsi = '—';
   savedLogs.forEach(l => {
@@ -1840,22 +2312,39 @@ function renderStatusGeral() {
     if (l.psi) lastPsi = l.psi;
   });
 
+  // Calcular injeções do liner atual (desde a última troca, SIM em log-liner)
+  let linerInjections = 0;
+  const sortedLogs = [...savedLogs].sort((a, b) => toISO(a.date).localeCompare(toISO(b.date)));
+  const lastLinerSwap = [...sortedLogs].reverse().find(l => l.liner === 'SIM');
+  if (lastLinerSwap) {
+    const swapDateIso = toISO(lastLinerSwap.date);
+    linerInjections = savedLogs
+      .filter(l => {
+        const lDate = toISO(l.date);
+        return lDate > swapDateIso || (lDate === swapDateIso && l.id >= lastLinerSwap.id);
+      })
+      .reduce((sum, l) => sum + (parseInt(l.inj) || 0), 0);
+  } else {
+    linerInjections = totalInjections;
+  }
+
   const elPsi = document.getElementById('kpi-psi');
   if (elPsi && lastPsi !== '—') elPsi.innerHTML = `${lastPsi}<span class="metric-unit">psi</span>`;
 
   const elInj = document.getElementById('kpi-inj');
   if (elInj) {
-    elInj.innerHTML = totalInjections;
-    if (totalInjections >= 800) updateMetricCard('kpi-inj', 'alert', '⚠ Trocar Liner');
-    else if (totalInjections >= 600) updateMetricCard('kpi-inj', 'warn', '⚠ Monitorar');
+    elInj.innerHTML = linerInjections;
+    if (linerInjections >= 800) updateMetricCard('kpi-inj', 'alert', '⚠ Trocar Liner');
+    else if (linerInjections >= 600) updateMetricCard('kpi-inj', 'warn', '⚠ Monitorar');
     else updateMetricCard('kpi-inj', 'ok', '✓ Normal');
   }
 
-  updateAlerts(totalInjections, lastTune);
+  updateAlerts(linerInjections, lastTune);
+  updateSidebarStatus(linerInjections, lastTune);
 
-  const linerPercent = Math.min((totalInjections / 500) * 100, 100);
+  const linerPercent = Math.min((linerInjections / 500) * 100, 100);
   const elLinerVal = document.getElementById('progress-liner-val');
-  if (elLinerVal) elLinerVal.innerHTML = `${totalInjections} / 500 est.`;
+  if (elLinerVal) elLinerVal.innerHTML = `${linerInjections} / 500 est.`;
   const elLinerBar = document.getElementById('progress-liner-bar');
   if (elLinerBar) {
     elLinerBar.style.width = `${linerPercent}%`;
@@ -1984,13 +2473,13 @@ function updateAutoIncrementedFields() {
   if (elTemp && !elTemp.value) elTemp.value = '23';
 
   // 2. Injeções autoincrementadas (total + 1)
-  let totalInjections = 0;
+  /*let totalInjections = 0;
   savedLogs.forEach(l => {
     if (l.inj) totalInjections += parseInt(l.inj);
   });
   const elInj = document.getElementById('log-inj');
   if (elInj) elInj.value = totalInjections + 1;
-
+  */
   // 3. Nº do Tune autoincrementado
   const nextTuneNum = tuneData.length > 0 ? Math.max(...tuneData.map(t => t.num || 0)) + 1 : 1;
   const elTuneNum = document.getElementById('log-tunenum');
@@ -2003,6 +2492,27 @@ function updateAutoIncrementedFields() {
 function renderMaintenanceSchedule() {
   const tbody = document.getElementById('maintenance-schedule-body');
   if (!tbody) return;
+
+  const toISO = (dStr) => {
+    if (!dStr) return '';
+    let parts;
+    dStr = dStr.trim();
+    if (dStr.includes('-')) {
+      parts = dStr.split('-');
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    } else if (dStr.includes('/')) {
+      parts = dStr.split('/');
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return dStr;
+  };
+
+  const parseLocal = (dStr) => {
+    const iso = toISO(dStr);
+    if (!iso) return new Date();
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
 
   const items = [
     { id: 'septo', label: 'Septo do injetor', freq: '100–200 injeções', limit: 150 },
@@ -2019,14 +2529,19 @@ function renderMaintenanceSchedule() {
     let statusLabel = 'OK';
 
     // Encontrar último registro desta manutenção
-    const lastLog = [...savedLogs].reverse().find(l => l[item.id] === 'SIM');
+    const sortedLogs = [...savedLogs].sort((a, b) => toISO(a.date).localeCompare(toISO(b.date)));
+    const lastLog = [...sortedLogs].reverse().find(l => l[item.id] === 'SIM');
 
     if (lastLog) {
       lastDate = lastLog.date;
 
       // Cálculo de injeções desde então
       if (item.id === 'septo' || item.id === 'liner') {
-        const logsSince = savedLogs.filter(l => new Date(l.date) >= new Date(lastLog.date));
+        const swapDateIso = toISO(lastLog.date);
+        const logsSince = savedLogs.filter(l => {
+          const lDate = toISO(l.date);
+          return lDate > swapDateIso || (lDate === swapDateIso && l.id >= lastLog.id);
+        });
         const totalInj = logsSince.reduce((sum, l) => sum + (parseInt(l.inj) || 0), 0);
         nextInfo = `${totalInj} / ${item.limit} inj.`;
         if (totalInj >= item.limit) { status = 'alert'; statusLabel = 'TROCAR'; }
@@ -2034,7 +2549,10 @@ function renderMaintenanceSchedule() {
       }
       // Cálculo de dias
       else if (item.limit > 0) {
-        const diffDays = Math.floor((new Date() - new Date(lastLog.date)) / (1000 * 60 * 60 * 24));
+        const todayLocal = new Date();
+        todayLocal.setHours(0, 0, 0, 0);
+        const lastLocal = parseLocal(lastLog.date);
+        const diffDays = Math.floor((todayLocal - lastLocal) / (1000 * 60 * 60 * 24));
         nextInfo = `${diffDays} / ${item.limit} dias`;
         if (diffDays >= item.limit) { status = 'alert'; statusLabel = 'ATRASADO'; }
         else if (diffDays >= item.limit * 0.8) { status = 'warn'; statusLabel = 'Perto'; }
@@ -2057,6 +2575,418 @@ function renderMaintenanceSchedule() {
 }
 
 // =====================================================================
+// BOOKINGS / RESERVAS DE EQUIPAMENTO
+// =====================================================================
+function switchBookingTab(tab) {
+  const formBtn = document.getElementById('booking-tab-form-btn');
+  const listBtn = document.getElementById('booking-tab-list-btn');
+  const formContent = document.getElementById('booking-tab-form-content');
+  const listContent = document.getElementById('booking-tab-list-content');
+
+  if (!formBtn || !listBtn || !formContent || !listContent) return;
+
+  if (tab === 'form') {
+    formBtn.classList.add('active');
+    formBtn.style.color = 'var(--teal)';
+    formBtn.style.borderBottomColor = 'var(--teal)';
+    listBtn.classList.remove('active');
+    listBtn.style.color = 'var(--muted)';
+    listBtn.style.borderBottomColor = 'transparent';
+    formContent.style.display = 'block';
+    listContent.style.display = 'none';
+  } else {
+    listBtn.classList.add('active');
+    listBtn.style.color = 'var(--teal)';
+    listBtn.style.borderBottomColor = 'var(--teal)';
+    formBtn.classList.remove('active');
+    formBtn.style.color = 'var(--muted)';
+    formBtn.style.borderBottomColor = 'transparent';
+    formContent.style.display = 'none';
+    listContent.style.display = 'block';
+
+    // Render lists when tab becomes active
+    renderBookingCalendar();
+    renderBookingsTable();
+  }
+}
+
+function prevBookingMonth() {
+  calendarCurrentMonth--;
+  if (calendarCurrentMonth < 0) {
+    calendarCurrentMonth = 11;
+    calendarCurrentYear--;
+  }
+  renderBookingCalendar();
+}
+
+function nextBookingMonth() {
+  calendarCurrentMonth++;
+  if (calendarCurrentMonth > 11) {
+    calendarCurrentMonth = 0;
+    calendarCurrentYear++;
+  }
+  renderBookingCalendar();
+}
+
+function renderBookingCalendar() {
+  const container = document.querySelector('.booking-calendar-grid');
+  const label = document.getElementById('booking-month-label');
+  if (!container || !label) return;
+
+  const monthNames = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ];
+
+  label.innerText = `${monthNames[calendarCurrentMonth]} ${calendarCurrentYear}`;
+
+  // First day of month
+  const firstDay = new Date(calendarCurrentYear, calendarCurrentMonth, 1);
+  const startDayOfWeek = firstDay.getDay();
+
+  // Total days in month
+  const totalDays = new Date(calendarCurrentYear, calendarCurrentMonth + 1, 0).getDate();
+
+  let daysHTML = '';
+
+  // Headers
+  const headers = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const headersHTML = headers.map(h => `<div class="booking-calendar-header">${h}</div>`).join('');
+
+  // Empty cells
+  for (let i = 0; i < startDayOfWeek; i++) {
+    daysHTML += '<div class="booking-calendar-day empty"></div>';
+  }
+
+  const now = new Date();
+  const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  // Days of the month
+  for (let day = 1; day <= totalDays; day++) {
+    const dStr = `${calendarCurrentYear}-${String(calendarCurrentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    // Find booking covering this day
+    const booking = bookingsData.find(b => {
+      return b.start_date <= dStr && dStr <= b.end_date;
+    });
+
+    const isToday = todayISO === dStr;
+
+    let cellClass = 'booking-calendar-day';
+    let contentHTML = `<span>${day}</span>`;
+
+    if (booking) {
+      cellClass += ' booked';
+      const displayName = booking.requester.length > 10 ? booking.requester.substring(0, 10) + '...' : booking.requester;
+      contentHTML += `<div class="day-info" title="Reservado por ${booking.requester} (${booking.operator})">${displayName}</div>`;
+    }
+
+    if (isToday) {
+      cellClass += ' today';
+    }
+
+    const clickHandler = booking ? `onclick="showBookingDetails(${booking.id})"` : '';
+
+    daysHTML += `<div class="${cellClass}" ${clickHandler}>${contentHTML}</div>`;
+  }
+
+  container.innerHTML = headersHTML + daysHTML;
+}
+
+function renderSidebarCalendar() {
+  const container = document.getElementById('sidebar-calendar-container');
+  if (!container) return;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  const monthNames = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ];
+
+  // First day of month
+  const firstDay = new Date(year, month, 1);
+  const startDayOfWeek = firstDay.getDay();
+
+  // Total days in month
+  const totalDays = new Date(year, month + 1, 0).getDate();
+
+  let daysHTML = '';
+
+  // Empty cells
+  for (let i = 0; i < startDayOfWeek; i++) {
+    daysHTML += '<div class="sidebar-calendar-day-cell empty"></div>';
+  }
+
+  const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  // Days
+  for (let day = 1; day <= totalDays; day++) {
+    const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    // Booked
+    const isBooked = bookingsData.some(b => {
+      return b.start_date <= dStr && dStr <= b.end_date;
+    });
+
+    const isToday = todayISO === dStr;
+
+    let cellClass = 'sidebar-calendar-day-cell';
+    if (isBooked) cellClass += ' booked';
+    if (isToday) cellClass += ' today';
+
+    daysHTML += `<div class="${cellClass}" title="${isBooked ? 'Equipamento Reservado' : ''}">${day}</div>`;
+  }
+
+  container.innerHTML = `
+    <div class="sidebar-calendar-title">${monthNames[month]} ${year}</div>
+    <div class="sidebar-calendar-grid">
+      <div class="sidebar-calendar-header-day">D</div>
+      <div class="sidebar-calendar-header-day">S</div>
+      <div class="sidebar-calendar-header-day">T</div>
+      <div class="sidebar-calendar-header-day">Q</div>
+      <div class="sidebar-calendar-header-day">Q</div>
+      <div class="sidebar-calendar-header-day">S</div>
+      <div class="sidebar-calendar-header-day">S</div>
+      ${daysHTML}
+    </div>
+  `;
+}
+
+function renderBookingsTable() {
+  const tbody = document.getElementById('bookings-table-body');
+  if (!tbody) return;
+
+  let list = [...bookingsData].sort((a, b) => b.start_date.localeCompare(a.start_date));
+
+  if (bookingSearchDate) {
+    list = list.filter(b => b.start_date <= bookingSearchDate && bookingSearchDate <= b.end_date);
+  }
+
+  const totalRecords = list.length;
+  const recordsPerPage = 15;
+  const totalPages = Math.ceil(totalRecords / recordsPerPage) || 1;
+
+  if (bookingCurrentPage > totalPages) {
+    bookingCurrentPage = totalPages;
+  }
+  if (bookingCurrentPage < 1) {
+    bookingCurrentPage = 1;
+  }
+
+  const startIndex = (bookingCurrentPage - 1) * recordsPerPage;
+  const paginatedList = list.slice(startIndex, startIndex + recordsPerPage);
+
+  if (paginatedList.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" style="padding:20px; text-align:center; color:var(--muted);">
+          Nenhum agendamento encontrado.
+        </td>
+      </tr>
+    `;
+    renderBookingsPagination(0, 1);
+    return;
+  }
+
+  const formatDateBR = (isoStr) => {
+    if (!isoStr) return '';
+    const parts = isoStr.split('-');
+    if (parts.length !== 3) return isoStr;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  };
+
+  tbody.innerHTML = paginatedList.map(b => {
+    const period = b.start_date === b.end_date
+      ? formatDateBR(b.start_date)
+      : `${formatDateBR(b.start_date)} a ${formatDateBR(b.end_date)}`;
+
+    return `
+      <tr style="border-bottom:1px solid var(--border); vertical-align:middle;">
+        <td style="padding:12px 10px; font-weight:600; color:var(--text);">${period}</td>
+        <td style="padding:12px 10px;">${b.requester}</td>
+        <td style="padding:12px 10px; font-family:'Space Mono', monospace; font-size:11px;">${b.operator}</td>
+        <td style="padding:12px 10px; color:var(--muted); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${b.obs || ''}">${b.obs || '—'}</td>
+        <td style="padding:12px 10px; text-align:center;">
+          <button class="btn btn-outline" style="padding:4px 8px; font-size:11px; border-color:var(--red); color:var(--red);" onclick="deleteBooking(${b.id})">Excluir</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  renderBookingsPagination(totalRecords, totalPages);
+}
+
+function renderBookingsPagination(totalRecords, totalPages) {
+  const container = document.getElementById('bookings-pagination');
+  if (!container) return;
+
+  if (totalPages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let html = '';
+
+  const prevClass = bookingCurrentPage === 1 ? 'pagination-link disabled' : 'pagination-link';
+  html += `<button class="${prevClass}" onclick="changeBookingPage(${bookingCurrentPage - 1})">Anterior</button>`;
+
+  for (let i = 1; i <= totalPages; i++) {
+    const activeClass = i === bookingCurrentPage ? 'pagination-link active' : 'pagination-link';
+    html += `<button class="${activeClass}" onclick="changeBookingPage(${i})">${i}</button>`;
+  }
+
+  const nextClass = bookingCurrentPage === totalPages ? 'pagination-link disabled' : 'pagination-link';
+  html += `<button class="${nextClass}" onclick="changeBookingPage(${bookingCurrentPage + 1})">Próxima</button>`;
+
+  container.innerHTML = html;
+}
+
+function changeBookingPage(page) {
+  bookingCurrentPage = page;
+  renderBookingsTable();
+}
+
+function searchBookingsByDate() {
+  const input = document.getElementById('book-search-date');
+  if (!input) return;
+  bookingSearchDate = input.value;
+  bookingCurrentPage = 1;
+  renderBookingsTable();
+}
+
+function clearBookingSearch() {
+  const input = document.getElementById('book-search-date');
+  if (input) input.value = '';
+  bookingSearchDate = '';
+  bookingCurrentPage = 1;
+  renderBookingsTable();
+}
+
+async function saveBooking() {
+  const startDateInput = document.getElementById('book-start-date');
+  const endDateInput = document.getElementById('book-end-date');
+  const operatorInput = document.getElementById('book-operator');
+  const requesterInput = document.getElementById('book-requester');
+  const obsInput = document.getElementById('book-obs');
+
+  if (!startDateInput || !endDateInput || !operatorInput || !requesterInput) return;
+
+  const start_date = startDateInput.value;
+  const end_date = endDateInput.value;
+  const operator = operatorInput.value.trim().toUpperCase();
+  const requester = requesterInput.value.trim();
+  const obs = obsInput.value.trim();
+
+  if (!start_date || !end_date || !operator || !requester) {
+    alert("Por favor, preencha todos os campos obrigatórios (*).");
+    return;
+  }
+
+  if (start_date > end_date) {
+    alert("A data de início não pode ser posterior à data de término.");
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start_date, end_date, operator, requester, obs })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || "Ocorreu um erro ao salvar o agendamento.");
+      return;
+    }
+
+    bookingsData = data.bookings || [];
+
+    startDateInput.value = '';
+    endDateInput.value = '';
+    operatorInput.value = '';
+    requesterInput.value = '';
+    if (obsInput) obsInput.value = '';
+
+    alert("Reserva de equipamento registrada com sucesso!");
+
+    switchBookingTab('list');
+    renderSidebarCalendar();
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao registrar agendamento no servidor.");
+  }
+}
+
+function showBookingDetails(id) {
+  const booking = bookingsData.find(b => b.id === id);
+  if (!booking) return;
+
+  const modal = document.getElementById('booking-detail-modal');
+  const content = document.getElementById('booking-det-content');
+  const deleteBtn = document.getElementById('btn-delete-booking');
+
+  if (!modal || !content) return;
+
+  const formatDateBR = (isoStr) => {
+    if (!isoStr) return '';
+    const parts = isoStr.split('-');
+    if (parts.length !== 3) return isoStr;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  };
+
+  const period = booking.start_date === booking.end_date
+    ? formatDateBR(booking.start_date)
+    : `${formatDateBR(booking.start_date)} a ${formatDateBR(booking.end_date)}`;
+
+  content.innerHTML = `
+    <div style="margin-bottom:12px;"><strong style="color:var(--muted);">Período:</strong> <span style="font-size:15px; font-weight:600; color:var(--text);">${period}</span></div>
+    <div style="margin-bottom:12px;"><strong style="color:var(--muted);">Solicitante da Reserva:</strong> <span style="color:var(--text);">${booking.requester}</span></div>
+    <div style="margin-bottom:12px;"><strong style="color:var(--muted);">Operador Responsável:</strong> <span style="font-family:'Space Mono', monospace; color:var(--teal); font-weight:600;">${booking.operator}</span></div>
+    <div style="margin-bottom:12px;"><strong style="color:var(--muted);">Observações:</strong></div>
+    <div style="background:var(--bg3); padding:10px; border-radius:6px; border:1px solid var(--border); min-height:60px; color:var(--label); font-family:inherit; white-space:pre-wrap;">${booking.obs || 'Nenhuma observação informada.'}</div>
+  `;
+
+  deleteBtn.onclick = () => deleteBooking(booking.id);
+
+  modal.classList.add('active');
+}
+
+function closeBookingDetailModal() {
+  const modal = document.getElementById('booking-detail-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+async function deleteBooking(id) {
+  if (!confirm("Tem certeza que deseja excluir esta reserva de equipamento?")) return;
+
+  try {
+    const res = await fetch(`/api/bookings/${id}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Ocorreu um erro ao excluir a reserva.");
+      return;
+    }
+
+    bookingsData = data.bookings || [];
+    closeBookingDetailModal();
+    renderBookingCalendar();
+    renderSidebarCalendar();
+    renderBookingsTable();
+    alert("Reserva excluída com sucesso!");
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao conectar com o servidor para excluir a reserva.");
+  }
+}
+
+// =====================================================================
 // INIT
 // =====================================================================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2064,12 +2994,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     const response = await fetch('/api/data');
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      showConnectionError("database", errData.error || `HTTP ${response.status}`);
+      return;
+    }
     const data = await response.json();
 
     tuneData = data.tuneData || [];
     savedLogs = data.savedLogs || [];
     correctiveRecords = data.correctiveRecords || [];
     columns = data.columns || [];
+    bookingsData = data.bookings || [];
 
     const currentYear = new Date().getFullYear();
 
@@ -2107,9 +3043,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateColumnSelects();
     renderMaintenanceSchedule();
     updateAutoIncrementedFields();
+    renderSidebarCalendar();
+    renderBookingCalendar();
+    renderBookingsTable();
 
   } catch (e) {
     console.error("Falha ao se conectar com o servidor Node.js", e);
-    alert("Não foi possível carregar os dados. Certifique-se de que o servidor Node.js está rodando.");
+    showConnectionError("server", e.message);
   }
 });
