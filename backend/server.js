@@ -49,7 +49,7 @@ async function initDB() {
         );
         CREATE TABLE IF NOT EXISTS chromatographic_columns (
             id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, model TEXT, serial TEXT, 
-            install_date TEXT, initial_length REAL, status TEXT
+            install_date TEXT, initial_length REAL, status TEXT, project TEXT, obs TEXT
         );
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,6 +73,18 @@ async function initDB() {
         await db.exec("ALTER TABLE saved_logs ADD COLUMN col_model TEXT");
     } catch (e) {
         // Ignora o erro se a coluna já existir no banco de dados antigo
+    }
+
+    // Tenta adicionar os novos campos a chromatographic_columns existentes
+    try {
+        await db.exec("ALTER TABLE chromatographic_columns ADD COLUMN project TEXT");
+    } catch (e) {
+        // Ignora
+    }
+    try {
+        await db.exec("ALTER TABLE chromatographic_columns ADD COLUMN obs TEXT");
+    } catch (e) {
+        // Ignora
     }
 
     // Migração inicial do JSON para o SQLite (se o json existir e a tabela estiver vazia)
@@ -207,8 +219,8 @@ app.get('/api/columns', async (req, res) => {
 app.post('/api/columns', async (req, res) => {
     try {
         const c = req.body;
-        await db.run('INSERT INTO chromatographic_columns (type, model, serial, install_date, initial_length, status) VALUES (?, ?, ?, ?, ?, ?)', 
-            [c.type, c.model, c.serial, c.install_date, c.initial_length, c.status]);
+        await db.run('INSERT INTO chromatographic_columns (type, model, serial, install_date, initial_length, status, project, obs) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+            [c.type, c.model, c.serial, c.install_date, c.initial_length, c.status, c.project || '', c.obs || '']);
         const cols = await db.all('SELECT * FROM chromatographic_columns ORDER BY id DESC');
         res.json({ success: true, columns: cols });
     } catch (error) {

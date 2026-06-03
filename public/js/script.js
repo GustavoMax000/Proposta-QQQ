@@ -18,25 +18,27 @@ const troubleshootItems = [
   {
     symptom: '⚡ Perda de sensibilidade / queda repentina de sinal',
     severity: 'alert',
-    causes: 'Fonte de íons contaminada; coluna degradada ou com excesso de bleed; detector (electron multiplier) no fim da vida útil; vazamento na linha de vácuo; filamento danificado.',
+    causes: 'Fonte EI contaminada, vazamento de vácuo, coluna contaminada ou sangramento excessivo, filamento danificado, electron multiplier envelhecido, gases contaminados ou pressão incorreta, problemas de tune/calibração.',
     steps: [
-      'Verificar m/z 18, 28, 32 no último tune — valores elevados indicam contaminação ou vazamento.',
-      'Inspecionar e limpar a fonte de íons (ion source cartridge) — lentes, volume iônico, repeller.',
-      'Cortar a coluna (2–5 cm) próximo ao injetor e verificar o liner.',
-      'Verificar se o EMV está próximo ou acima de 2500 V; se sim, considerar substituição do electron multiplier.',
-      'Verificar a corrente de emissão do filamento. Alternar para filamento 2 se necessário.',
-      'Realizar EI Full Tune com gás PFTBA e verificar relatório de diagnóstico.',
+      'Verificar background: m/z (H2O), m/z 28 (N2) e m/z 32 (O2). Valores elevados indicam contaminação ou vazamento.',
+      'Verificar pressão/vácuo: estabilidade da bomba turbo, manifold pressure.',
+      'Rodar EI Full Tune (PFTBA): Avaliar abundância, resolução, EMV e emissão do filamento.',
+      'Verificar filamento: corrente de emissão, alternar para filamento 2.',
+      'Verificar se o EMV está próximo ou acima de 2500V; se sim, considerar substituição de electron multiplier.',
+      'Inspecionar e limpar fonte: ion volume, repeller, lenses.',
+      'Avaliar coluna/inlet: liner, septo, e em último caso corte de 2-5 cm.',
+      'Verificar gases: He e Ar, traps/reguladores.',
     ]
   },
   {
     symptom: '🌡️ Temperatura da interface instável ou acima do limite',
     severity: 'warn',
-    causes: 'Transfer line desconectada ou com mau contato; superaquecimento da coluna cromatográfica (colunas poliimida: não exceder 280 °C contínuo); configuração de método incorreta.',
+    causes: 'Transfer line desconectada ou com mau contato; superaquecimento da coluna cromatográfica; configuração de método incorreta.',
     steps: [
-      'Verificar a temperatura definida no método: Transfer Line Max = 400 °C absoluto; para colunas de poliimida, limite prático = 280 °C.',
+      'Verificar a temperatura definida no método: Transfer Line Max = 400 °C absoluto',
       'Conferir se a coluna instalada é compatível com a temperatura programada.',
       'Reconectar o cabo da transfer line ao MS e verificar no software TSQ Series se o valor está sendo lido corretamente.',
-      'Executar um EI Diagnostics no Chromeleon para verificar sensores de temperatura.',
+      'Verificar aumento do background em massas típicas de sangramento (ex: m/z 207, 281, 355)',
     ]
   },
   {
@@ -58,7 +60,7 @@ const troubleshootItems = [
       'Verificar com leak detector ou isobutano (método de exclusão) todas as conexões: injetor, transfer line, manifold door.',
       'Checar septo do injetor — substituir se necessário (uso recomendado: <150 injeções).',
       'Verificar o o-ring do manifold door e o vent valve o-ring.',
-      'Se m/z 32 > 2%, parar imediatamente as corridas — o O₂ deteriora o filamento e os componentes do electron multiplier.',
+      'Se m/z 32 > 2%, parar imediatamente as corridas — o O₂ deteriora o filamento e os componentes do eletromultiplicadora.',
       'Reconectar a coluna ao MS com o procedimento correto de SilTite fitting.',
     ]
   },
@@ -74,15 +76,15 @@ const troubleshootItems = [
     ]
   },
   {
-    symptom: '⏱️ Deriva de tempo de retenção do PI (tR)',
+    symptom: '⏱️ Variação de tempo de retenção do PI (tR)',
     severity: 'warn',
     causes: 'Variação de pressão no injetor; coluna degradada ou com volume morto; temperatura do forno instável; troca de lote de gás de arraste.',
     steps: [
       'Verificar a pressão no injetor (registrar diariamente) — comparar com valores históricos.',
       'Verificar a temperatura do forno do GC no início e fim da corrida.',
-      'Realizar corte da coluna (2–5 cm) se observado alargamento de pico além do corte.',
       'Confirmar que o liner está limpo e com volume morto mínimo.',
       'Se o tR mudou > 0.05 min em relação ao histórico, investigar antes de injetar amostras reais.',
+      'Realizar corte da coluna (2–5 cm) se observado alargamento de pico além do corte.',
     ]
   },
   {
@@ -2200,7 +2202,7 @@ function showConnectionError(type, detail) {
   console.error(`[Connection Error] Type: ${type}, Detail:`, detail);
   let title = "";
   let message = "";
-  
+
   if (type === "server") {
     title = "Erro de Conexão com o Servidor";
     message = "Não foi possível se conectar ao servidor Node.js. Por favor, verifique se o servidor está rodando (porta 3000).";
@@ -2232,7 +2234,7 @@ function showConnectionError(type, detail) {
     </h3>
     <p style="margin:0;font-size:12px;opacity:0.9;">${message}</p>
   `;
-  
+
   const mainEl = document.getElementById('main') || document.body;
   mainEl.insertBefore(banner, mainEl.firstChild);
 }
@@ -2375,6 +2377,24 @@ function renderStatusGeral() {
 function openColumnModal() {
   document.getElementById('column-modal').classList.add('show');
   document.getElementById('col-install-date').value = new Date().toISOString().split('T')[0];
+  
+  // Limpar os campos e redefinir os contadores
+  const colModel = document.getElementById('col-model');
+  if (colModel) colModel.value = '';
+  const colSerial = document.getElementById('col-serial');
+  if (colSerial) colSerial.value = '';
+  const colInitialLength = document.getElementById('col-initial-length');
+  if (colInitialLength) colInitialLength.value = '30';
+  
+  const colProject = document.getElementById('col-project');
+  if (colProject) colProject.value = '';
+  const colProjectCounter = document.getElementById('col-project-counter');
+  if (colProjectCounter) colProjectCounter.innerText = '25 rest.';
+  
+  const colObs = document.getElementById('col-obs');
+  if (colObs) colObs.value = '';
+  const colObsCounter = document.getElementById('col-obs-counter');
+  if (colObsCounter) colObsCounter.innerText = '150 rest.';
 }
 
 function closeColumnModal() {
@@ -2388,10 +2408,12 @@ async function saveColumn() {
   const install_date = document.getElementById('col-install-date').value;
   const initial_length = parseFloat(document.getElementById('col-initial-length').value || 0);
   const status = document.getElementById('col-status').value;
+  const project = document.getElementById('col-project') ? document.getElementById('col-project').value.trim() : '';
+  const obs = document.getElementById('col-obs') ? document.getElementById('col-obs').value.trim() : '';
 
   if (!model || !install_date) { alert('Modelo e Data são obrigatórios.'); return; }
 
-  const entry = { type, model, serial, install_date, initial_length, status };
+  const entry = { type, model, serial, install_date, initial_length, status, project, obs };
 
   try {
     const response = await fetch('/api/columns', {
@@ -2432,10 +2454,12 @@ function renderColumnHistory() {
         <td>${c.type}</td>
         <td class="num">${c.model}</td>
         <td class="num">${c.serial || '—'}</td>
+        <td>${c.project || '—'}</td>
         <td class="num">${c.install_date}</td>
         <td class="num ok">${totalCuts} cm</td>
         <td class="num"><strong>${remaining.toFixed(2)} m</strong></td>
         <td><span class="metric-badge ${statusClass}">${c.status}</span></td>
+        <td>${c.obs || '—'}</td>
         <td><button class="btn btn-outline" style="padding:2px 8px" onclick="deleteColumn(${c.id})">×</button></td>
       </tr>
     `;
@@ -2464,7 +2488,10 @@ function updateColumnSelects() {
   if (!sel) return;
   const activeCols = columns.filter(c => c.status === 'Em uso');
   sel.innerHTML = '<option value="">— Selecione uma coluna —</option>' +
-    activeCols.map(c => `<option value="${c.model}">${c.model} (${c.type})</option>`).join('');
+    activeCols.map(c => {
+      const serialPart = c.serial ? ` - S/N: ${c.serial}` : '';
+      return `<option value="${c.model}">${c.model} (${c.type})${serialPart}</option>`;
+    }).join('');
 }
 
 function updateAutoIncrementedFields() {

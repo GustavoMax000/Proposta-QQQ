@@ -491,10 +491,12 @@
               <th>Dimensão</th>
               <th>Código/Modelo</th>
               <th>Nº de Série</th>
+              <th>Projeto</th>
               <th>Instalação</th>
               <th>Total Cortes</th>
               <th>Comp. Est.</th>
               <th>Status</th>
+              <th>Obs</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -1264,6 +1266,24 @@
             <option value="Reserva">Reserva</option>
             <option value="Arquivada">Arquivada</option>
           </select>
+        </div>
+        <div class="form-field">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="margin:0;">Projeto</label>
+            <span id="col-project-counter"
+              style="font-size:9px; color:var(--muted); font-family:'Space Mono', monospace;">25 rest.</span>
+          </div>
+          <input type="text" id="col-project" maxlength="25" placeholder="Projeto associado"
+            oninput="document.getElementById('col-project-counter').innerText = (25 - this.value.length) + ' rest.'">
+        </div>
+        <div class="form-field form-full" style="margin-top:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="margin:0;">Observações</label>
+            <span id="col-obs-counter"
+              style="font-size:9px; color:var(--muted); font-family:'Space Mono', monospace;">150 rest.</span>
+          </div>
+          <textarea id="col-obs" maxlength="150" placeholder="Observações adicionais..." rows="2"
+            oninput="document.getElementById('col-obs-counter').innerText = (150 - this.value.length) + ' rest.'"></textarea>
         </div>
       </div>
       <div style="margin-top:20px; display:flex; gap:10px;">
