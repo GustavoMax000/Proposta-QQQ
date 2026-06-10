@@ -38,8 +38,8 @@ async function initDB() {
         );
         CREATE TABLE IF NOT EXISTS saved_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, op TEXT, psi REAL, inj INTEGER, 
-            obs TEXT, sistema TEXT, he TEXT, limpinj TEXT, septo TEXT, liner TEXT, 
-            col_model TEXT, corte REAL, trpi REAL, limpfonte TEXT, tamb REAL
+            obs TEXT, sistema TEXT, he TEXT, collision_gas TEXT, limpinj TEXT, septo TEXT, liner TEXT, 
+            col_model TEXT, corte REAL, trpi REAL, limpfonte TEXT, trocaoleo TEXT,tamb REAL
         );
         CREATE TABLE IF NOT EXISTS corrective_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, resp TEXT, sup TEXT, prob TEXT, proc TEXT, result TEXT
@@ -60,19 +60,33 @@ async function initDB() {
             obs TEXT
         );
     `);
-    
+
     // Tenta adicionar a coluna tamb a tabelas existentes
     try {
         await db.exec("ALTER TABLE saved_logs ADD COLUMN tamb REAL");
     } catch (e) {
         // Ignora o erro se a coluna já existir no banco de dados antigo
     }
-    
+
     // Tenta adicionar a coluna col_model a tabelas existentes
     try {
         await db.exec("ALTER TABLE saved_logs ADD COLUMN col_model TEXT");
     } catch (e) {
         // Ignora o erro se a coluna já existir no banco de dados antigo
+    }
+
+    // Tenta adicionar a coluna collision_gas a tabelas existentes
+    try {
+        await db.exec("ALTER TABLE saved_logs ADD COLUMN collision_gas TEXT");
+    } catch (e) {
+        // Ignora o erro se a coluna já existir no banco de dados antigo
+    }
+
+    // Tenta adicionar a coluna trocaoleo a tabelas existentes
+    try {
+        await db.exec("ALTER TABLE saved_logs ADD COLUMN trocaoleo TEXT");
+    } catch (e) {
+        // Ignora o erro se a coluna já existir
     }
 
     // Tenta adicionar os novos campos a chromatographic_columns existentes
@@ -92,29 +106,29 @@ async function initDB() {
     if (tuneCount.count === 0 && fs.existsSync(OLD_JSON_PATH)) {
         console.log("Migrando dados do database.json para SQLite...");
         const data = JSON.parse(fs.readFileSync(OLD_JSON_PATH, 'utf8'));
-        
+
         for (const t of data.tuneData || []) {
             await db.run(`INSERT INTO tune_data (num, date, op, fil, emv, tint, m69, m219, m502, m18, m28, m32) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [t.num, t.date, t.op, t.fil, t.emv, t.tint, t.m69, t.m219, t.m502, t.m18, t.m28, t.m32]);
         }
-        
+
         if (data.injectByMonth) {
             for (let i = 0; i < data.injectByMonth.length; i++) {
                 await db.run('INSERT INTO inject_by_month (month_idx, count) VALUES (?, ?)', [i, data.injectByMonth[i]]);
             }
         }
-        
+
         for (const l of data.savedLogs || []) {
-            await db.run('INSERT INTO saved_logs (date, op, psi, inj, obs) VALUES (?, ?, ?, ?, ?)', 
+            await db.run('INSERT INTO saved_logs (date, op, psi, inj, obs) VALUES (?, ?, ?, ?, ?)',
                 [l.date, l.op, l.psi, l.inj, l.obs]);
         }
-        
+
         for (const c of data.correctiveRecords || []) {
-            await db.run('INSERT INTO corrective_records (date, resp, sup, prob, proc, result) VALUES (?, ?, ?, ?, ?, ?)', 
+            await db.run('INSERT INTO corrective_records (date, resp, sup, prob, proc, result) VALUES (?, ?, ?, ?, ?, ?)',
                 [c.date, c.resp, c.sup, c.prob, c.proc, c.result]);
         }
-        
+
         console.log("Migração concluída com sucesso.");
     }
 }
@@ -125,14 +139,14 @@ app.get('/api/data', async (req, res) => {
         const tuneData = await db.all('SELECT * FROM tune_data ORDER BY num ASC');
         const logs = await db.all('SELECT * FROM saved_logs ORDER BY id ASC');
         const corrective = await db.all('SELECT * FROM corrective_records ORDER BY id ASC');
-        
+
         const injectRows = await db.all('SELECT * FROM inject_by_month ORDER BY month_idx ASC');
         const injectByMonth = Array(12).fill(0);
         injectRows.forEach(row => { injectByMonth[row.month_idx] = row.count; });
-        
+
         const columns = await db.all('SELECT * FROM chromatographic_columns ORDER BY id DESC');
         const bookings = await db.all('SELECT * FROM bookings ORDER BY start_date ASC, id ASC');
-        
+
         res.json({
             tuneData: tuneData,
             injectByMonth: injectByMonth,
@@ -149,11 +163,11 @@ app.get('/api/data', async (req, res) => {
 app.post('/api/tune', async (req, res) => {
     try {
         const tune = req.body;
-        await db.run('INSERT INTO tune_data (num, date, op, fil, emv, tint, m69, m219, m502, m18, m28, m32) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+        await db.run('INSERT INTO tune_data (num, date, op, fil, emv, tint, m69, m219, m502, m18, m28, m32) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [tune.num, tune.date, tune.op, tune.fil, tune.emv, tune.tint, tune.m69, tune.m219, tune.m502, tune.m18, tune.m28, tune.m32]);
-        
+
         appendTxtLog(`Novo Tune #${tune.num} registrado pelo operador ${tune.op || 'Desconhecido'}. (EMV: ${tune.emv}V)`);
-        
+
         const records = await db.all('SELECT * FROM tune_data ORDER BY num ASC');
         res.json({ success: true, tuneData: records });
     } catch (error) {
@@ -165,13 +179,13 @@ app.post('/api/logs', async (req, res) => {
     try {
         const newLog = req.body;
         await db.run(`INSERT INTO saved_logs 
-            (date, op, psi, inj, obs, sistema, he, limpinj, septo, liner, col_model, corte, trpi, limpfonte, tamb) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-            [newLog.date, newLog.op, newLog.psi, newLog.inj, newLog.obs, newLog.sistema, newLog.he, 
-             newLog.limpinj, newLog.septo, newLog.liner, newLog.col_model, newLog.corte, newLog.trpi, newLog.limpfonte, newLog.tamb]);
-        
+            (date, op, psi, inj, obs, sistema, he, collision_gas, limpinj, septo, liner, col_model, corte, trpi, limpfonte, trocaoleo, tamb) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [newLog.date, newLog.op, newLog.psi, newLog.inj, newLog.obs, newLog.sistema, newLog.he, newLog.collision_gas,
+            newLog.limpinj, newLog.septo, newLog.liner, newLog.col_model, newLog.corte, newLog.trpi, newLog.limpfonte, newLog.trocaoleo, newLog.tamb]);
+
         appendTxtLog(`Novo registro diário adicionado pelo operador ${newLog.op || 'Desconhecido'}. (Injeções: ${newLog.inj || 0}, Psi: ${newLog.psi || '—'})`);
-        
+
         const logs = await db.all('SELECT * FROM saved_logs ORDER BY id ASC');
         res.json({ success: true, savedLogs: logs });
     } catch (error) {
@@ -182,11 +196,11 @@ app.post('/api/logs', async (req, res) => {
 app.post('/api/corrective', async (req, res) => {
     try {
         const newRecord = req.body;
-        await db.run('INSERT INTO corrective_records (date, resp, sup, prob, proc, result) VALUES (?, ?, ?, ?, ?, ?)', 
+        await db.run('INSERT INTO corrective_records (date, resp, sup, prob, proc, result) VALUES (?, ?, ?, ?, ?, ?)',
             [newRecord.date, newRecord.resp, newRecord.sup, newRecord.prob, newRecord.proc, newRecord.result]);
-        
+
         appendTxtLog(`Manutenção corretiva registrada por ${newRecord.resp} - Problema: ${newRecord.prob}`);
-        
+
         const records = await db.all('SELECT * FROM corrective_records ORDER BY id ASC');
         res.json({ success: true, correctiveRecords: records });
     } catch (error) {
@@ -219,7 +233,7 @@ app.get('/api/columns', async (req, res) => {
 app.post('/api/columns', async (req, res) => {
     try {
         const c = req.body;
-        await db.run('INSERT INTO chromatographic_columns (type, model, serial, install_date, initial_length, status, project, obs) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+        await db.run('INSERT INTO chromatographic_columns (type, model, serial, install_date, initial_length, status, project, obs) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [c.type, c.model, c.serial, c.install_date, c.initial_length, c.status, c.project || '', c.obs || '']);
         const cols = await db.all('SELECT * FROM chromatographic_columns ORDER BY id DESC');
         res.json({ success: true, columns: cols });
@@ -243,11 +257,11 @@ app.delete('/api/columns/:id', async (req, res) => {
 app.post('/api/bookings', async (req, res) => {
     try {
         const { start_date, end_date, operator, requester, obs } = req.body;
-        
+
         if (!start_date || !end_date || !operator || !requester) {
             return res.status(400).json({ error: "Campos obrigatórios ausentes" });
         }
-        
+
         if (start_date > end_date) {
             return res.status(400).json({ error: "A data de início não pode ser posterior à data de término." });
         }

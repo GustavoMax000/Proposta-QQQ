@@ -8,7 +8,7 @@ let bookingsData = [];
 let calendarCurrentYear = new Date().getFullYear();
 let calendarCurrentMonth = new Date().getMonth();
 let bookingCurrentPage = 1;
-let bookingSearchDate = '';
+let bookingSearchMonth = '';
 let chartEmvAnual = null;
 let chartInjAnual = null;
 let chartLeakAnual = null;
@@ -20,7 +20,7 @@ const troubleshootItems = [
     severity: 'alert',
     causes: 'Fonte EI contaminada, vazamento de vácuo, coluna contaminada ou sangramento excessivo, filamento danificado, electron multiplier envelhecido, gases contaminados ou pressão incorreta, problemas de tune/calibração.',
     steps: [
-      'Verificar background: m/z (H2O), m/z 28 (N2) e m/z 32 (O2). Valores elevados indicam contaminação ou vazamento.',
+      'Verificar background: m/z 18 (H2O), m/z 28 (N2) e m/z 32 (O2). Valores elevados indicam contaminação ou vazamento.',
       'Verificar pressão/vácuo: estabilidade da bomba turbo, manifold pressure.',
       'Rodar EI Full Tune (PFTBA): Avaliar abundância, resolução, EMV e emissão do filamento.',
       'Verificar filamento: corrente de emissão, alternar para filamento 2.',
@@ -412,6 +412,10 @@ function onTuneSearchInput() {
   renderTuneTable();
 }
 
+function onLogSearchInput() {
+  renderFullLogsList();
+}
+
 // =====================================================================
 // TROUBLESHOOT
 // =====================================================================
@@ -570,12 +574,23 @@ function renderFullLogsList() {
   };
 
   // List descending order by date (and ID)
-  const sorted = [...savedLogs].sort((a, b) => {
+  let sorted = [...savedLogs].sort((a, b) => {
     const dateA = new Date(toISO(a.date));
     const dateB = new Date(toISO(b.date));
     if (dateA - dateB !== 0) return dateB - dateA;
     return b.id - a.id;
   });
+
+  // Filter by search query (date)
+  const query = (document.getElementById('log-search-date')?.value || '').trim().toLowerCase();
+  if (query) {
+    sorted = sorted.filter(l => l.date.toLowerCase().includes(query));
+  }
+
+  if (sorted.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--muted); padding:20px;">Nenhum registro diário localizado para a busca.</td></tr>`;
+    return;
+  }
 
   tbody.innerHTML = sorted.map(l => {
     const logIsoDate = toISO(l.date);
@@ -584,10 +599,12 @@ function renderFullLogsList() {
     // Build list of preventives
     let preventives = [];
     if (l.he === 'SIM') preventives.push('Hélio');
+    if (l.collision_gas === 'SIM') preventives.push('Gás Colisão');
     if (l.limpinj === 'SIM') preventives.push('Injetor');
     if (l.septo === 'SIM') preventives.push('Septo');
     if (l.liner === 'SIM') preventives.push('Liner');
     if (l.limpfonte === 'SIM') preventives.push('Fonte');
+    if (l.trocaoleo === 'SIM') preventives.push('Óleo Bomba');
     if (l.corte && parseFloat(l.corte) > 0) preventives.push(`Corte (${l.corte}cm)`);
 
     const preventivesStr = preventives.length > 0 ? preventives.join(', ') : '—';
@@ -652,10 +669,12 @@ function openLogDetailModal(logId) {
 
   let preventives = [];
   if (log.he === 'SIM') preventives.push('Troca Cilindro Hélio');
+  if (log.collision_gas === 'SIM') preventives.push('Troca Cilindro Gás Colisão');
   if (log.limpinj === 'SIM') preventives.push('Limpeza do Injetor');
   if (log.septo === 'SIM') preventives.push('Substituição de Septo');
   if (log.liner === 'SIM') preventives.push('Substituição de Liner');
   if (log.limpfonte === 'SIM') preventives.push('Limpeza da Fonte de Íons');
+  if (log.trocaoleo === 'SIM') preventives.push('Troca de óleo da bomba');
   if (log.corte && parseFloat(log.corte) > 0) preventives.push(`Corte de Coluna (${log.corte} cm)`);
 
   let preventivesHTML = '';
@@ -835,6 +854,7 @@ async function saveLog() {
 
   // Novos campos
   const he = document.getElementById('log-he').value;
+  const collision_gas = document.getElementById('log-collision-gas').value;
   const limpinj = document.getElementById('log-limpinj').value;
   const septo = document.getElementById('log-septo').value;
   const liner = document.getElementById('log-liner').value;
@@ -842,12 +862,13 @@ async function saveLog() {
   const corte = document.getElementById('log-corte').value || 0;
   const trpi = document.getElementById('log-trpi').value || 0;
   const limpfonte = document.getElementById('log-limpfonte').value;
+  const trocaoleo = document.getElementById('log-trocaoleo').value;
 
   if (!date) { alert('Preencha a data do registro.'); return; }
 
   const entry = {
     date, op, psi, inj, obs,
-    sistema, he, limpinj, septo, liner, col_model, corte, trpi, limpfonte,
+    sistema, he, collision_gas, limpinj, septo, liner, col_model, corte, trpi, limpfonte, trocaoleo,
     tamb: parseFloat(temp)
   };
 
@@ -899,7 +920,7 @@ async function saveLog() {
     ['log-op', 'log-psi', 'log-obs', 'log-corte', 'log-trpi', 'log-emv', 'log-18', 'log-28', 'log-32', 'log-69', 'log-219', 'log-502', 'log-tinterf', 'log-col-model'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
-    ['log-sistema', 'log-he', 'log-limpinj', 'log-septo', 'log-liner', 'log-col', 'log-limpfonte', 'log-fil'].forEach(id => {
+    ['log-sistema', 'log-he', 'log-collision-gas', 'log-limpinj', 'log-septo', 'log-liner', 'log-col', 'log-limpfonte', 'log-fil', 'log-trocaoleo'].forEach(id => {
       const el = document.getElementById(id); if (el) el.selectedIndex = 0;
     });
 
@@ -2377,7 +2398,7 @@ function renderStatusGeral() {
 function openColumnModal() {
   document.getElementById('column-modal').classList.add('show');
   document.getElementById('col-install-date').value = new Date().toISOString().split('T')[0];
-  
+
   // Limpar os campos e redefinir os contadores
   const colModel = document.getElementById('col-model');
   if (colModel) colModel.value = '';
@@ -2385,12 +2406,12 @@ function openColumnModal() {
   if (colSerial) colSerial.value = '';
   const colInitialLength = document.getElementById('col-initial-length');
   if (colInitialLength) colInitialLength.value = '30';
-  
+
   const colProject = document.getElementById('col-project');
   if (colProject) colProject.value = '';
   const colProjectCounter = document.getElementById('col-project-counter');
   if (colProjectCounter) colProjectCounter.innerText = '25 rest.';
-  
+
   const colObs = document.getElementById('col-obs');
   if (colObs) colObs.value = '';
   const colObsCounter = document.getElementById('col-obs-counter');
@@ -2788,8 +2809,12 @@ function renderBookingsTable() {
 
   let list = [...bookingsData].sort((a, b) => b.start_date.localeCompare(a.start_date));
 
-  if (bookingSearchDate) {
-    list = list.filter(b => b.start_date <= bookingSearchDate && bookingSearchDate <= b.end_date);
+  if (bookingSearchMonth) {
+    const monthStart = `${bookingSearchMonth}-01`;
+    const [year, month] = bookingSearchMonth.split('-').map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthEnd = `${bookingSearchMonth}-${String(lastDay).padStart(2, '0')}`;
+    list = list.filter(b => b.start_date <= monthEnd && b.end_date >= monthStart);
   }
 
   const totalRecords = list.length;
@@ -2876,18 +2901,18 @@ function changeBookingPage(page) {
   renderBookingsTable();
 }
 
-function searchBookingsByDate() {
-  const input = document.getElementById('book-search-date');
+function searchBookingsByMonth() {
+  const input = document.getElementById('book-search-month');
   if (!input) return;
-  bookingSearchDate = input.value;
+  bookingSearchMonth = input.value;
   bookingCurrentPage = 1;
   renderBookingsTable();
 }
 
-function clearBookingSearch() {
-  const input = document.getElementById('book-search-date');
+function clearBookingMonthSearch() {
+  const input = document.getElementById('book-search-month');
   if (input) input.value = '';
-  bookingSearchDate = '';
+  bookingSearchMonth = '';
   bookingCurrentPage = 1;
   renderBookingsTable();
 }

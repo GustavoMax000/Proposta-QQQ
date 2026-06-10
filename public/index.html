@@ -676,6 +676,13 @@
                 </select>
               </div>
               <div class="form-field">
+                <label>Troca Cilindro Gás Colisão</label>
+                <select id="log-collision-gas">
+                  <option value="">Não</option>
+                  <option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div class="form-field">
                 <label>Limpeza Injetor</label>
                 <select id="log-limpinj">
                   <option value="">Não</option>
@@ -712,6 +719,13 @@
               <div class="form-field">
                 <label>Limpeza Fonte</label>
                 <select id="log-limpfonte">
+                  <option value="">Não</option>
+                  <option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Troca oléo da bomba de vácuo</label>
+                <select id="log-trocaoleo">
                   <option value="">Não</option>
                   <option value="SIM">SIM</option>
                 </select>
@@ -795,7 +809,15 @@
       <!-- TAB Content 2: List -->
       <div id="log-tab-list-content" style="display:none;">
         <div class="card">
-          <div class="card-title" style="margin-bottom:10px;">Histórico de Registros Diários</div>
+          <div
+            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+            <div class="card-title" style="margin:0;">Histórico de Registros Diários</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:12px; color:var(--muted);">Buscar por Data:</span>
+              <input type="text" id="log-search-date" placeholder="Ex: 10/02/2022" oninput="onLogSearchInput()"
+                style="padding:6px 12px; border-radius:6px; background:var(--bg3); border:1px solid var(--border); color:var(--text); font-size:12px; width:180px;">
+            </div>
+          </div>
           <div style="font-size:12px; color:var(--muted); margin-bottom:20px;">Clique em qualquer linha do histórico
             para abrir os detalhes completos do registro correspondente.</div>
 
@@ -987,12 +1009,12 @@
             <div style="flex:1; min-width:200px;">
               <label
                 style="display:block; font-size:11px; font-weight:600; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Buscar
-                Agendamentos por Data</label>
+                Agendamentos por Mês</label>
               <div style="display:flex; gap:8px;">
-                <input type="date" id="book-search-date"
+                <input type="month" id="book-search-month"
                   style="flex:1; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg2); color:var(--text); font-size:13px;">
-                <button class="btn btn-outline" onclick="searchBookingsByDate()">Buscar</button>
-                <button class="btn btn-outline" onclick="clearBookingSearch()">Limpar</button>
+                <button class="btn btn-outline" onclick="searchBookingsByMonth()">Buscar</button>
+                <button class="btn btn-outline" onclick="clearBookingMonthSearch()">Limpar</button>
               </div>
             </div>
           </div>

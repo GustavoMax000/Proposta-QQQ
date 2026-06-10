@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tsq-dashboard-v16';
+const CACHE_NAME = 'tsq-dashboard-v21';
 const ASSETS = [
   '/',
   '/index.html',
