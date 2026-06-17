@@ -2,16 +2,37 @@
   "name": "Dashboard GCxGC — TSQ 9610",
   "short_name": "Dashboard TSQ",
   "description": "Monitoramento Dinâmico de Equipamento LAGOA/UFRJ",
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#0d9488",
   "icons": [
     {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
       "src": "assets/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Hub de Equipamentos",
+      "short_name": "Hub",
+      "description": "Visão geral de todos os equipamentos",
+      "url": "/",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "TSQ 9610 GC/MS",
+      "short_name": "TSQ 9610",
+      "description": "Abrir dashboard do TSQ 9610 diretamente",
+      "url": "/?equipment_id=1",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

@@ -1,6 +1,7 @@
 // =====================================================================
 // DATA
 // =====================================================================
+let currentEquipmentId = null;
 let tuneData = [];
 let injectByMonth = [];
 let columns = [];
@@ -125,6 +126,138 @@ function showPage(page) {
 }
 
 // =====================================================================
+// AUTH & HUB
+// =====================================================================
+function checkAuthState() {
+  const token = sessionStorage.getItem('token');
+  const username = sessionStorage.getItem('username');
+  if (token && username) {
+    document.getElementById('hub-user-name').textContent = `Logado como: ${username}`;
+    document.getElementById('btn-login-hub').style.display = 'none';
+    document.getElementById('btn-logout-hub').style.display = 'inline-block';
+  } else {
+    document.getElementById('hub-user-name').textContent = 'Não logado';
+    document.getElementById('btn-login-hub').style.display = 'inline-block';
+    document.getElementById('btn-logout-hub').style.display = 'none';
+  }
+}
+
+function openLoginModal() {
+  document.getElementById('login-modal').style.display = 'flex';
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+}
+
+function closeLoginModal() {
+  document.getElementById('login-modal').style.display = 'none';
+}
+
+function performLogin() {
+  const u = document.getElementById('login-username').value;
+  const p = document.getElementById('login-password').value;
+
+  fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: u, password: p })
+  }).then(res => res.json()).then(data => {
+    if (data.success) {
+      sessionStorage.setItem('token', data.token);
+      sessionStorage.setItem('username', data.username);
+      sessionStorage.setItem('permissions', JSON.stringify(data.permissions));
+      closeLoginModal();
+      checkAuthState();
+    } else {
+      document.getElementById('login-error').textContent = data.error || 'Erro no login.';
+      document.getElementById('login-error').style.display = 'block';
+    }
+  }).catch(e => {
+    document.getElementById('login-error').textContent = 'Erro ao contatar o servidor.';
+    document.getElementById('login-error').style.display = 'block';
+  });
+}
+
+function logout() {
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('username');
+  sessionStorage.removeItem('permissions');
+  checkAuthState();
+  showHub();
+}
+
+function isUserAuthorized() {
+  const token = sessionStorage.getItem('token');
+  if (!token) return false;
+  // TODO: Em um cenário complexo, validar permissão por equipment_id
+  return true;
+}
+
+function ensureAuth(callback) {
+  if (isUserAuthorized()) {
+    callback();
+  } else {
+    openLoginModal();
+  }
+}
+
+function showHub() {
+  currentEquipmentId = null;
+  document.getElementById('hub-view').classList.add('active');
+  document.getElementById('sidebar').style.display = 'none';
+  document.getElementById('main').style.display = 'none';
+  loadEquipments();
+}
+
+function loadEquipments() {
+  document.querySelectorAll('.connection-error-banner').forEach(el => el.remove());
+  fetch('/api/equipments').then(res => res.json()).then(eqs => {
+    const grid = document.getElementById('hub-equipments-grid');
+    grid.innerHTML = '';
+    eqs.forEach(eq => {
+      const card = document.createElement('div');
+      card.className = 'hub-card';
+      card.onclick = () => openEquipment(eq.id, eq.name);
+      let statusHtml = `<div class="hub-card-status"><span class="status-dot"></span> Operacional</div>`;
+      if (eq.status === 'offline') {
+        const offDate = new Date(eq.offDate);
+        offDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor((today - offDate) / (1000 * 60 * 60 * 24));
+        statusHtml = `<div class="hub-card-status" style="color:var(--red)"><span class="status-dot" style="background:var(--red); animation:none;"></span> Desligado (há ${diffDays} dias)</div>`;
+      } else if (eq.status === 'noop') {
+        statusHtml = `<div class="hub-card-status" style="color:var(--red)"><span class="status-dot" style="background:var(--red); animation:none;"></span> Não Operacional</div>`;
+      } else if (eq.status === 'alert') {
+        statusHtml = `<div class="hub-card-status" style="color:var(--amber)"><span class="status-dot" style="background:var(--amber); animation:none;"></span> Em Alerta</div>`;
+      }
+      card.innerHTML = `
+        <div class="hub-card-icon"><img src="assets/Salinan-GCMSMS-TSQ-9610.png" alt="TSQ 9610" style="width: 100%; height: auto;"></div>
+        <div class="hub-card-title">${eq.name}</div>
+        <div class="hub-card-desc">${eq.model}</div>
+        ${statusHtml}
+      `;
+      grid.appendChild(card);
+    });
+  }).catch(e => {
+    console.error("Erro ao carregar equipamentos:", e);
+    showConnectionError("server", "Não foi possível buscar a lista de equipamentos.");
+  });
+}
+
+function openEquipment(id, name) {
+  currentEquipmentId = id;
+  document.getElementById('hub-view').classList.remove('active');
+  document.getElementById('sidebar').style.display = 'block';
+  document.getElementById('main').style.display = 'block';
+
+  document.querySelector('.equip-name').innerHTML = name.replace(' ', '<br>');
+
+  loadData();
+  showPage('status');
+}
+
+// =====================================================================
 // RENDER DATE
 // =====================================================================
 function renderDate() {
@@ -190,16 +323,21 @@ function buildEmvChart(id, labels, data) {
   });
 }
 
+let chartInstances = [];
+
 function initCharts() {
+  chartInstances.forEach(c => c.destroy());
+  chartInstances = [];
+
   const labels = tuneData.map(t => t.date);
   const emvs = tuneData.map(t => t.emv);
 
   // EMV main chart
-  buildEmvChart('emvChart', labels, emvs);
-  buildEmvChart('emvSmall', labels, emvs);
+  chartInstances.push(buildEmvChart('emvChart', labels, emvs));
+  chartInstances.push(buildEmvChart('emvSmall', labels, emvs));
 
   // Injection chart
-  new Chart(document.getElementById('injectChart'), {
+  chartInstances.push(new Chart(document.getElementById('injectChart'), {
     type: 'bar',
     plugins: [tealPlugin],
     data: {
@@ -221,10 +359,10 @@ function initCharts() {
         y: { grid: { color: 'rgba(226,232,240,.4)' }, ticks: { color: '#64748b', font: { size: 10 } }, beginAtZero: true }
       }
     }
-  });
+  }));
 
   // Tune full chart (multi-series)
-  new Chart(document.getElementById('tuneChart'), {
+  chartInstances.push(new Chart(document.getElementById('tuneChart'), {
     type: 'line',
     plugins: [tealPlugin],
     data: {
@@ -244,10 +382,10 @@ function initCharts() {
         y: { grid: { color: 'rgba(226,232,240,.4)' }, ticks: { color: '#64748b', font: { size: 10 } }, beginAtZero: true, max: 70 }
       }
     }
-  });
+  }));
 
   // H2O chart
-  new Chart(document.getElementById('h2oChart'), {
+  chartInstances.push(new Chart(document.getElementById('h2oChart'), {
     type: 'bar',
     plugins: [tealPlugin],
     data: {
@@ -268,10 +406,10 @@ function initCharts() {
         y: { grid: { color: 'rgba(226,232,240,.4)' }, ticks: { color: '#64748b', font: { size: 9 } }, max: 12, beginAtZero: true }
       }
     }
-  });
+  }));
 
   // Leak chart
-  new Chart(document.getElementById('leakChart'), {
+  chartInstances.push(new Chart(document.getElementById('leakChart'), {
     type: 'line',
     plugins: [tealPlugin],
     data: {
@@ -289,7 +427,7 @@ function initCharts() {
         y: { grid: { color: 'rgba(226,232,240,.4)' }, ticks: { color: '#64748b', font: { size: 9 } }, beginAtZero: true, max: 12 }
       }
     }
-  });
+  }));
 }
 
 // =====================================================================
@@ -837,6 +975,8 @@ function closeLogDetailModal() {
 }
 
 async function saveLog() {
+  if (!isUserAuthorized()) return openLoginModal();
+
   const date = document.getElementById('log-date').value;
   const op = document.getElementById('log-op').value.trim();
   const temp = document.getElementById('log-temp').value.trim();
@@ -884,8 +1024,11 @@ async function saveLog() {
   try {
     const response = await fetch('/api/logs', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry)
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ ...entry, equipment_id: currentEquipmentId })
     });
     const result = await response.json();
     savedLogs = result.savedLogs;
@@ -909,8 +1052,11 @@ async function saveLog() {
       };
       await fetch('/api/tune', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(tuneEntry)
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ ...tuneEntry, equipment_id: currentEquipmentId })
       });
       window.location.reload();
       return;
@@ -1345,6 +1491,7 @@ async function generatePDF() {
 let correctiveRecords = [];
 
 async function saveCorrectiveMaint() {
+  if (!isUserAuthorized()) return openLoginModal();
   const date = document.getElementById('cor-date').value;
   const resp = document.getElementById('cor-resp').value.trim();
   const sup = document.getElementById('cor-sup').value.trim();
@@ -1358,8 +1505,11 @@ async function saveCorrectiveMaint() {
   try {
     const response = await fetch('/api/corrective', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry)
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ ...entry, equipment_id: currentEquipmentId })
     });
     const resData = await response.json();
     correctiveRecords = resData.correctiveRecords;
@@ -1720,10 +1870,14 @@ function showPageWithTuneData(tuneDate, tuneNum) {
 }
 
 async function deleteCorrective(id) {
+  if (!isUserAuthorized()) return openLoginModal();
   if (!confirm('Deseja realmente excluir este registro de manutenção? Esta ação não pode ser desfeita.')) return;
 
   try {
-    const response = await fetch(`/api/corrective/${id}`, { method: 'DELETE' });
+    const response = await fetch(`/api/corrective/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
+    });
     const result = await response.json();
     correctiveRecords = result.correctiveRecords;
     renderCorrectiveTable();
@@ -2098,6 +2252,20 @@ function updateAlerts(totalInjections, lastTune) {
   let criticalCount = 0;
   let warnCount = 0;
 
+  const lastLog = savedLogs.length > 0 ? savedLogs[savedLogs.length - 1] : null;
+  const lastSistema = lastLog ? String(lastLog.sistema || '').trim() : 'Sim';
+  const isSistemaNao = lastSistema === 'Não' || lastSistema === 'Nao' || lastSistema.toLowerCase().startsWith('n');
+
+  if (isSistemaNao) {
+    const offDate = new Date(lastLog.date);
+    offDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((today - offDate) / (1000 * 60 * 60 * 24));
+    alertsHTML += `<div class="alert-banner alert"><span class="alert-icon">❌</span><div class="alert-text"><strong>Equipamento Desligado</strong>O último registro diário indicou que o sistema foi desligado. Tempo offline: ${diffDays} dia(s).</div></div>`;
+    criticalCount++;
+  }
+
   // 1. Liner
   if (totalInjections >= 800) {
     alertsHTML += `<div class="alert-banner alert"><span class="alert-icon">⚠</span><div class="alert-text"><strong>Liner — Limite de Injeções Excedido</strong>O liner atual acumula ${totalInjections} injeções. É necessário realizar a troca imediatamente (limite: 800).</div></div>`;
@@ -2167,40 +2335,52 @@ function updateSidebarStatus(linerInjections, lastTune) {
   if (!pill || !dot || !text) return;
 
   const lastLog = savedLogs.length > 0 ? savedLogs[savedLogs.length - 1] : null;
-  const lastSistema = lastLog ? String(lastLog.sistema).trim() : 'Sim';
+  const lastSistema = lastLog ? String(lastLog.sistema || '').trim() : 'Sim';
   const isSistemaNao = lastSistema === 'Não' || lastSistema === 'Nao' || lastSistema.toLowerCase().startsWith('n');
 
   let isAlert = false;
   let isNoOperacional = false;
+  let reasons = [];
 
   // 1. Verificar limites do Liner
   if (linerInjections >= 800) {
     isNoOperacional = true;
+    reasons.push("Liner: Limite excedido (>800 injeções)");
   } else if (linerInjections >= 600) {
     isAlert = true;
+    reasons.push("Liner: Troca recomendada (>600 injeções)");
   }
 
   // 2. Verificar limites do Tune
   if (lastTune) {
     // Críticos (Não Operacional)
-    if (lastTune.emv >= 2500) isNoOperacional = true;
-    if (lastTune.m18 >= 10) isNoOperacional = true;
-    if (lastTune.m28 >= 10) isNoOperacional = true;
-    if (lastTune.m32 >= 2) isNoOperacional = true;
-    if (lastTune.tint >= 400) isNoOperacional = true;
+    if (lastTune.emv >= 2500) { isNoOperacional = true; reasons.push("EMV: Limite excedido (>2500V)"); }
+    if (lastTune.m18 >= 10) { isNoOperacional = true; reasons.push("Vazamento: H₂O elevado (>10%)"); }
+    if (lastTune.m28 >= 10) { isNoOperacional = true; reasons.push("Vazamento: N₂ elevado (>10%)"); }
+    if (lastTune.m32 >= 2) { isNoOperacional = true; reasons.push("Vazamento: O₂ elevado (>2%)"); }
+    if (lastTune.tint >= 400) { isNoOperacional = true; reasons.push("Temperatura: Fonte superaquecida (>400°C)"); }
 
     // Alertas
-    if (lastTune.emv >= 2200 && lastTune.emv < 2500) isAlert = true;
-    if (lastTune.m18 >= 8 && lastTune.m18 < 10) isAlert = true;
-    if (lastTune.m28 >= 8 && lastTune.m28 < 10) isAlert = true;
-    if (lastTune.m32 >= 1.5 && lastTune.m32 < 2) isAlert = true;
-    if (lastTune.tint >= 380 && lastTune.tint < 400) isAlert = true;
+    if (lastTune.emv >= 2200 && lastTune.emv < 2500) { isAlert = true; reasons.push("EMV: Tensão alta, desgaste"); }
+    if (lastTune.m18 >= 8 && lastTune.m18 < 10) { isAlert = true; reasons.push("Atenção: H₂O m/z 18 próximo do limite"); }
+    if (lastTune.m28 >= 8 && lastTune.m28 < 10) { isAlert = true; reasons.push("Atenção: N₂ m/z 28 próximo do limite"); }
+    if (lastTune.m32 >= 1.5 && lastTune.m32 < 2) { isAlert = true; reasons.push("Atenção: O₂ m/z 32 próximo do limite"); }
+    if (lastTune.tint >= 380 && lastTune.tint < 400) { isAlert = true; reasons.push("Atenção: Temperatura da fonte elevada"); }
   }
 
   // 3. Verificar o status de "sistema" do último log
   if (isSistemaNao) {
     isNoOperacional = true;
+    const offDate = new Date(lastLog.date);
+    offDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((today - offDate) / (1000 * 60 * 60 * 24));
+    reasons.push(`Equipamento Desligado (há ${diffDays} dia(s))`);
   }
+
+  if (reasons.length === 0) reasons.push("Equipamento operando normalmente.");
+  pill.title = reasons.join('\n');
 
   // Reset classes
   pill.classList.remove('warn', 'alert');
@@ -2423,6 +2603,7 @@ function closeColumnModal() {
 }
 
 async function saveColumn() {
+  if (!isUserAuthorized()) return openLoginModal();
   const type = document.getElementById('col-type').value;
   const model = document.getElementById('col-model').value.trim();
   const serial = document.getElementById('col-serial').value.trim();
@@ -2439,8 +2620,11 @@ async function saveColumn() {
   try {
     const response = await fetch('/api/columns', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry)
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ ...entry, equipment_id: currentEquipmentId })
     });
     const result = await response.json();
     if (!response.ok || !result.success) {
@@ -2488,9 +2672,13 @@ function renderColumnHistory() {
 }
 
 async function deleteColumn(id) {
+  if (!isUserAuthorized()) return openLoginModal();
   if (!confirm('Deseja excluir esta coluna?')) return;
   try {
-    const response = await fetch(`/api/columns/${id}`, { method: 'DELETE' });
+    const response = await fetch(`/api/columns/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
+    });
     const result = await response.json();
     if (!response.ok || !result.success) {
       throw new Error(result.error || 'Erro ao excluir');
@@ -2918,6 +3106,7 @@ function clearBookingMonthSearch() {
 }
 
 async function saveBooking() {
+  if (!isUserAuthorized()) return openLoginModal();
   const startDateInput = document.getElementById('book-start-date');
   const endDateInput = document.getElementById('book-end-date');
   const operatorInput = document.getElementById('book-operator');
@@ -2945,8 +3134,11 @@ async function saveBooking() {
   try {
     const res = await fetch('/api/bookings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ start_date, end_date, operator, requester, obs })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ start_date, end_date, operator, requester, obs, equipment_id: currentEquipmentId })
     });
 
     const data = await res.json();
@@ -3013,11 +3205,13 @@ function closeBookingDetailModal() {
 }
 
 async function deleteBooking(id) {
+  if (!isUserAuthorized()) return openLoginModal();
   if (!confirm("Tem certeza que deseja excluir esta reserva de equipamento?")) return;
 
   try {
     const res = await fetch(`/api/bookings/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
     });
     const data = await res.json();
 
@@ -3043,9 +3237,33 @@ async function deleteBooking(id) {
 // =====================================================================
 document.addEventListener('DOMContentLoaded', async () => {
   renderDate();
+  checkAuthState();
 
+  const params = new URLSearchParams(window.location.search);
+  const eqId = params.get('equipment_id');
+  if (eqId) {
+    try {
+      const res = await fetch('/api/equipments');
+      const eqs = await res.json();
+      const eq = eqs.find(e => e.id == eqId);
+      if (eq) {
+        openEquipment(eq.id, eq.name);
+      } else {
+        showHub();
+      }
+    } catch (e) {
+      showHub();
+    }
+  } else {
+    showHub();
+  }
+});
+
+async function loadData() {
+  if (!currentEquipmentId) return;
+  document.querySelectorAll('.connection-error-banner').forEach(el => el.remove());
   try {
-    const response = await fetch('/api/data');
+    const response = await fetch(`/api/data?equipment_id=${currentEquipmentId}`);
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
       showConnectionError("database", errData.error || `HTTP ${response.status}`);
@@ -3103,4 +3321,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error("Falha ao se conectar com o servidor Node.js", e);
     showConnectionError("server", e.message);
   }
-});
+}

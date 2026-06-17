@@ -33,7 +33,8 @@ body {
 /* SIDEBAR */
 #sidebar {
   width: 220px;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
   background: var(--bg2);
   border-right: 1px solid var(--border);
   display: flex;
@@ -140,6 +141,10 @@ body {
   background: rgba(220, 38, 38, .12);
   border-color: rgba(220, 38, 38, .3);
   color: var(--red);
+}
+
+#sidebar-calendar-container {
+  margin-top: auto;
 }
 
 .status-dot {
@@ -1214,4 +1219,138 @@ body {
   opacity: 0.5;
   pointer-events: none;
   background: var(--bg3);
+}
+
+/* --- HUB DE EQUIPAMENTOS --- */
+.hub-container {
+  display: none;
+  padding: 40px;
+  background-color: var(--bg);
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.hub-container.active {
+  display: block;
+}
+
+.hub-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.hub-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 28px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.hub-title span {
+  color: var(--teal);
+}
+
+.hub-user {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  margin-left: auto;
+}
+
+.hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.hub-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.hub-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--teal);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.hub-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--teal);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.hub-card:hover::before {
+  transform: scaleX(1);
+}
+
+.hub-card-icon {
+  font-size: 40px;
+  margin-bottom: 16px;
+  color: var(--teal);
+}
+
+.hub-card-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.hub-card-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 20px;
+  flex-grow: 1;
+}
+
+.hub-card-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--green);
+  align-self: flex-start;
+}
+
+.hub-card-status .status-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+@media (max-width: 768px) {
+  .hub-container {
+    padding: 20px;
+  }
+  .hub-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  .hub-grid {
+    grid-template-columns: 1fr;
+  }
 }

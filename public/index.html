@@ -27,12 +27,32 @@
 
 <body>
 
+  <!-- HUB VIEW -->
+  <div id="hub-view" class="hub-container active">
+    <div class="hub-header">
+      <div class="hub-title">Hub de <span>Equipamentos</span></div>
+      <div class="hub-user">
+        <span id="hub-user-name" style="margin-right: 15px; color: var(--muted);">Não logado</span>
+        <button class="btn btn-outline" id="btn-login-hub" onclick="openLoginModal()">Login</button>
+        <button class="btn btn-outline" id="btn-logout-hub" style="display:none;" onclick="logout()">Sair</button>
+      </div>
+    </div>
+    <div class="hub-grid" id="hub-equipments-grid">
+      <!-- Cards de equipamentos carregados dinamicamente -->
+    </div>
+  </div>
+
   <!-- SIDEBAR -->
-  <nav id="sidebar">
+  <nav id="sidebar" style="display: none;">
     <div class="sidebar-logo">
       <div class="equip-code">Cód. 12E797</div>
       <div class="equip-name">TSQ 9610<br>GC/MS</div>
       <div class="method-tag">Método 5.389 · Triagem IX</div>
+    </div>
+
+    <div class="nav-section-label">Hub</div>
+    <div class="nav-item" onclick="showHub()">
+      <span class="icon">⏏</span> Voltar ao Hub
     </div>
 
     <div class="nav-section-label">Navegação</div>
@@ -75,7 +95,7 @@
   </nav>
 
   <!-- MAIN CONTENT -->
-  <main id="main">
+  <main id="main" style="display: none;">
 
     <!-- ===== PAGE: STATUS ===== -->
     <div class="page active" id="page-status">
@@ -1392,6 +1412,32 @@
       <div class="pdf-spinner" style="margin:0 auto 20px;"></div>
       <div class="modal-title" style="margin-bottom:10px;">Gerando Relatório Anual</div>
       <div id="pdf-status" style="font-size:12px;color:var(--teal);">Preparando páginas...</div>
+    </div>
+  </div>
+
+  <!-- LOGIN MODAL -->
+  <div class="modal-overlay" id="login-modal" style="display:none;">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <div class="modal-title">Autenticação Necessária</div>
+        <button class="modal-close" onclick="closeLoginModal()">×</button>
+      </div>
+      <div class="modal-body" style="padding-top: 16px;">
+        <p style="margin-bottom: 20px; color: var(--muted); font-size: 14px;">Para realizar esta ação, insira suas credenciais.</p>
+        <div class="form-group">
+          <label class="form-label">Usuário</label>
+          <input type="text" class="form-input" id="login-username">
+        </div>
+        <div class="form-group" style="margin-top: 16px;">
+          <label class="form-label">Senha</label>
+          <input type="password" class="form-input" id="login-password">
+        </div>
+        <div id="login-error" style="color: #ef4444; font-size: 13px; margin-top: 12px; display: none;"></div>
+      </div>
+      <div class="modal-footer" style="margin-top:24px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid var(--border); padding-top:16px;">
+        <button class="btn btn-outline" onclick="closeLoginModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="performLogin()">Entrar</button>
+      </div>
     </div>
   </div>
 
