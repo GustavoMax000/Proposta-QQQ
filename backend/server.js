@@ -2,21 +2,20 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
+const { getDB, initDB } = require('./db');
+const equipmentsConfig = require('./config/equipments_config');
+
 const app = express();
 const PORT = 3000;
-const DB_PATH = path.join(__dirname, '..', 'database.sqlite');
-const OLD_JSON_PATH = path.join(__dirname, '..', 'docs', 'database.json');
 const LOG_PATH = path.join(__dirname, '..', 'log_uso.txt');
 const JWT_SECRET = 'qQqq_TSQ9610_s3cr3t_K3y_!@#';
 
 app.use(cors());
 app.use(express.json());
-// Serve os arquivos estáticos (HTML, CSS, JS, etc) da pasta public
+// Serve static assets from public folder
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 const authenticateJWT = (req, res, next) => {
@@ -33,163 +32,105 @@ const authenticateJWT = (req, res, next) => {
     }
 };
 
-let db;
-
 function appendTxtLog(message) {
     const timestamp = new Date().toLocaleString('pt-BR');
     const logLine = `[${timestamp}] ${message}\n`;
-    fs.appendFileSync(LOG_PATH, logLine);
+    fs.promises.appendFile(LOG_PATH, logLine).catch(err => console.error("Error writing text log:", err));
 }
 
-// Inicializa e configura o banco SQLite
-async function initDB() {
-    db = await open({
-        filename: DB_PATH,
-        driver: sqlite3.Database
-    });
-
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS equipments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, model TEXT, description TEXT, image_url TEXT, status TEXT
-        );
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password_hash TEXT, role TEXT
-        );
-        CREATE TABLE IF NOT EXISTS user_permissions (
-            user_id INTEGER, equipment_id INTEGER,
-            FOREIGN KEY(user_id) REFERENCES users(id),
-            FOREIGN KEY(equipment_id) REFERENCES equipments(id),
-            PRIMARY KEY(user_id, equipment_id)
-        );
-        CREATE TABLE IF NOT EXISTS tune_data (
-            num INTEGER PRIMARY KEY, date TEXT, op TEXT, fil INTEGER, emv INTEGER, 
-            tint INTEGER, m69 REAL, m219 REAL, m502 REAL, m18 REAL, m28 REAL, m32 REAL, equipment_id INTEGER DEFAULT 1
-        );
-        CREATE TABLE IF NOT EXISTS saved_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, op TEXT, psi REAL, inj INTEGER, 
-            obs TEXT, sistema TEXT, he TEXT, collision_gas TEXT, limpinj TEXT, septo TEXT, liner TEXT, 
-            col_model TEXT, corte REAL, trpi REAL, limpfonte TEXT, trocaoleo TEXT,tamb REAL, equipment_id INTEGER DEFAULT 1
-        );
-        CREATE TABLE IF NOT EXISTS corrective_records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, resp TEXT, sup TEXT, prob TEXT, proc TEXT, result TEXT, equipment_id INTEGER DEFAULT 1
-        );
-        CREATE TABLE IF NOT EXISTS inject_by_month (
-            month_idx INTEGER PRIMARY KEY, count INTEGER, equipment_id INTEGER DEFAULT 1
-        );
-        CREATE TABLE IF NOT EXISTS chromatographic_columns (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, model TEXT, serial TEXT, 
-            install_date TEXT, initial_length REAL, status TEXT, project TEXT, obs TEXT, equipment_id INTEGER DEFAULT 1
-        );
-        CREATE TABLE IF NOT EXISTS bookings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            start_date TEXT NOT NULL,
-            end_date TEXT NOT NULL,
-            operator TEXT NOT NULL,
-            requester TEXT NOT NULL,
-            obs TEXT, equipment_id INTEGER DEFAULT 1
-        );
-    `);
-
-    // Tenta adicionar a coluna tamb a tabelas existentes
+// Helpers for data conversion
+const mergeJson = (row) => {
+    if (!row) return row;
+    const { data_json, ...rest } = row;
+    let extra = {};
     try {
-        await db.exec("ALTER TABLE saved_logs ADD COLUMN tamb REAL");
-    } catch (e) {
-        // Ignora o erro se a coluna já existir no banco de dados antigo
+        if (data_json) extra = JSON.parse(data_json);
+    } catch(e) {}
+    return { ...rest, ...extra };
+};
+
+// Dynamic equipment status evaluator (Optimized with targeted SQL queries)
+async function evaluateEquipmentStatus(db, eq, config) {
+    const lastLog = await db.get('SELECT id, date, sistema, inj, tamb, data_json FROM saved_logs WHERE equipment_id = ? ORDER BY id DESC LIMIT 1', [eq.id]);
+    if (!lastLog) return 'ok';
+
+    // 1. Check offline status
+    if (lastLog.sistema && (lastLog.sistema === 'Não' || lastLog.sistema === 'Nao' || lastLog.sistema.toLowerCase().startsWith('n'))) {
+        eq.offDate = lastLog.date;
+        return 'offline';
     }
 
-    // Tenta adicionar a coluna col_model a tabelas existentes
-    try {
-        await db.exec("ALTER TABLE saved_logs ADD COLUMN col_model TEXT");
-    } catch (e) {
-        // Ignora o erro se a coluna já existir no banco de dados antigo
+    // 2. Optimized calculation for accumulated injections since last part replacement
+    let replaceField = 'liner';
+    if (eq.equipment_type === 'generic-hplc') {
+        replaceField = 'frit';
     }
 
-    // Tenta adicionar a coluna collision_gas a tabelas existentes
-    try {
-        await db.exec("ALTER TABLE saved_logs ADD COLUMN collision_gas TEXT");
-    } catch (e) {
-        // Ignora o erro se a coluna já existir no banco de dados antigo
+    // Find latest log id where the part was replaced
+    const swapRow = await db.get(
+        `SELECT id FROM saved_logs WHERE equipment_id = ? AND json_extract(data_json, '$.' || ?) = 'SIM' ORDER BY id DESC LIMIT 1`,
+        [eq.id, replaceField]
+    );
+
+    let accumulatedInjections = 0;
+    if (swapRow && swapRow.id) {
+        const sumRes = await db.get('SELECT SUM(inj) as total FROM saved_logs WHERE equipment_id = ? AND id >= ?', [eq.id, swapRow.id]);
+        accumulatedInjections = (sumRes && sumRes.total) ? sumRes.total : 0;
+    } else {
+        const sumRes = await db.get('SELECT SUM(inj) as total FROM saved_logs WHERE equipment_id = ?', [eq.id]);
+        accumulatedInjections = (sumRes && sumRes.total) ? sumRes.total : 0;
     }
 
-    // Tenta adicionar a coluna trocaoleo a tabelas existentes
-    try {
-        await db.exec("ALTER TABLE saved_logs ADD COLUMN trocaoleo TEXT");
-    } catch (e) {
-        // Ignora o erro se a coluna já existir
+    // Get last tune
+    const lastTune = await db.get('SELECT data_json FROM tune_data WHERE equipment_id = ? ORDER BY num DESC LIMIT 1', [eq.id]);
+    const lastTuneData = lastTune ? JSON.parse(lastTune.data_json || '{}') : {};
+    const lastLogData = JSON.parse(lastLog.data_json || '{}');
+
+    // Create state map to evaluate status rules
+    const stats = {
+        linerInjections: accumulatedInjections,
+        inj: lastLog.inj || 0,
+        sistema: lastLog.sistema,
+        tamb: lastLog.tamb,
+        ...lastLogData,
+        ...lastTuneData
+    };
+
+    const rules = config.statusRules || {};
+
+    const checkCondition = (rule) => {
+        const val = stats[rule.field];
+        if (val === undefined || val === null) return false;
+        if (rule.operator === '>=') return parseFloat(val) >= rule.value;
+        if (rule.operator === '<=') return parseFloat(val) <= rule.value;
+        if (rule.operator === '>') return parseFloat(val) > rule.value;
+        if (rule.operator === '<') return parseFloat(val) < rule.value;
+        if (rule.operator === '==') return val == rule.value;
+        if (rule.operator === 'in') return rule.values.includes(val);
+        return false;
+    };
+
+    // Check critical state (noop)
+    if (rules.noop) {
+        const isNoOp = rules.noop.some(checkCondition);
+        if (isNoOp) return 'noop';
     }
 
-    // Tenta adicionar os novos campos a chromatographic_columns existentes
-    try {
-        await db.exec("ALTER TABLE chromatographic_columns ADD COLUMN project TEXT");
-    } catch (e) {
-        // Ignora
-    }
-    try {
-        await db.exec("ALTER TABLE chromatographic_columns ADD COLUMN obs TEXT");
-    } catch (e) {
-        // Ignora
+    // Check warning state (alert)
+    if (rules.alert) {
+        const isAlert = rules.alert.some(checkCondition);
+        if (isAlert) return 'alert';
     }
 
-    // Tenta adicionar a coluna equipment_id a tabelas existentes
-    const tablesToAlter = ['tune_data', 'saved_logs', 'corrective_records', 'inject_by_month', 'chromatographic_columns', 'bookings'];
-    for (const table of tablesToAlter) {
-        try {
-            await db.exec(`ALTER TABLE ${table} ADD COLUMN equipment_id INTEGER DEFAULT 1`);
-        } catch(e) {
-            // Ignora se já existir
-        }
-    }
-
-    // Inserir equipamento padrão se não existir
-    const eqCount = await db.get('SELECT COUNT(*) as count FROM equipments');
-    if (eqCount.count === 0) {
-        await db.run("INSERT INTO equipments (id, name, model) VALUES (1, 'TSQ 9610 GC/MS', 'Thermo Scientific')");
-    }
-
-    // Inserir admin padrão se não existir
-    const usrCount = await db.get('SELECT COUNT(*) as count FROM users');
-    if (usrCount.count === 0) {
-        const hash = bcrypt.hashSync('admin', 10);
-        await db.run("INSERT INTO users (username, password_hash, role) VALUES ('admin', ?, 'admin')", [hash]);
-        // Dá permissão ao admin para o equipamento 1
-        await db.run("INSERT INTO user_permissions (user_id, equipment_id) VALUES (1, 1)");
-    }
-
-    // Migração inicial do JSON para o SQLite (se o json existir e a tabela estiver vazia)
-    const tuneCount = await db.get('SELECT COUNT(*) as count FROM tune_data');
-    if (tuneCount.count === 0 && fs.existsSync(OLD_JSON_PATH)) {
-        console.log("Migrando dados do database.json para SQLite...");
-        const data = JSON.parse(fs.readFileSync(OLD_JSON_PATH, 'utf8'));
-
-        for (const t of data.tuneData || []) {
-            await db.run(`INSERT INTO tune_data (num, date, op, fil, emv, tint, m69, m219, m502, m18, m28, m32) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [t.num, t.date, t.op, t.fil, t.emv, t.tint, t.m69, t.m219, t.m502, t.m18, t.m28, t.m32]);
-        }
-
-        if (data.injectByMonth) {
-            for (let i = 0; i < data.injectByMonth.length; i++) {
-                await db.run('INSERT INTO inject_by_month (month_idx, count) VALUES (?, ?)', [i, data.injectByMonth[i]]);
-            }
-        }
-
-        for (const l of data.savedLogs || []) {
-            await db.run('INSERT INTO saved_logs (date, op, psi, inj, obs) VALUES (?, ?, ?, ?, ?)',
-                [l.date, l.op, l.psi, l.inj, l.obs]);
-        }
-
-        for (const c of data.correctiveRecords || []) {
-            await db.run('INSERT INTO corrective_records (date, resp, sup, prob, proc, result) VALUES (?, ?, ?, ?, ?, ?)',
-                [c.date, c.resp, c.sup, c.prob, c.proc, c.result]);
-        }
-
-        console.log("Migração concluída com sucesso.");
-    }
+    return 'ok';
 }
 
-// Auth and Equipments routes
+// REST API Endpoints
+
+// Authentication
 app.post('/api/login', async (req, res) => {
     try {
+        const db = await getDB();
         const { username, password } = req.body;
         const user = await db.get('SELECT * FROM users WHERE username = ?', [username]);
         if (user && bcrypt.compareSync(password, user.password_hash)) {
@@ -204,39 +145,19 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// Configurations endpoint
+app.get('/api/equipments/config', (req, res) => {
+    res.json(equipmentsConfig);
+});
+
+// Equipment List (with dynamic status assessment)
 app.get('/api/equipments', async (req, res) => {
     try {
+        const db = await getDB();
         const eqs = await db.all('SELECT * FROM equipments');
         for (let eq of eqs) {
-            const lastLog = await db.get('SELECT * FROM saved_logs WHERE equipment_id = ? ORDER BY id DESC LIMIT 1', [eq.id]);
-            if (lastLog && (lastLog.sistema === 'Não' || lastLog.sistema === 'Nao' || (lastLog.sistema || '').toLowerCase().startsWith('n'))) {
-                eq.status = 'offline';
-                eq.offDate = lastLog.date;
-                continue;
-            }
-
-            const logs = await db.all('SELECT * FROM saved_logs WHERE equipment_id = ? ORDER BY id ASC', [eq.id]);
-            const revLogs = [...logs].reverse();
-            const lastSwapIndex = revLogs.findIndex(l => l.liner === 'SIM');
-            const logsSinceSwap = lastSwapIndex !== -1 ? revLogs.slice(0, lastSwapIndex + 1) : logs;
-            const linerInjections = logsSinceSwap.reduce((sum, l) => sum + (parseInt(l.inj) || 0), 0);
-
-            const lastTune = await db.get('SELECT * FROM tune_data WHERE equipment_id = ? ORDER BY num DESC LIMIT 1', [eq.id]);
-
-            let isNoOp = false;
-            let isAlert = false;
-
-            if (linerInjections >= 800) isNoOp = true;
-            else if (linerInjections >= 600) isAlert = true;
-
-            if (lastTune) {
-                if (lastTune.emv >= 2500 || lastTune.m18 >= 10 || lastTune.m28 >= 10 || lastTune.m32 >= 2 || lastTune.tint >= 400) isNoOp = true;
-                else if (lastTune.emv >= 2200 || lastTune.m18 >= 8 || lastTune.m28 >= 8 || lastTune.m32 >= 1.5 || lastTune.tint >= 380) isAlert = true;
-            }
-
-            if (isNoOp) eq.status = 'noop';
-            else if (isAlert) eq.status = 'alert';
-            else eq.status = 'ok';
+            const config = equipmentsConfig[eq.equipment_type] || equipmentsConfig['tsq-9610'];
+            eq.status = await evaluateEquipmentStatus(db, eq, config);
         }
         res.json(eqs);
     } catch (error) {
@@ -244,9 +165,63 @@ app.get('/api/equipments', async (req, res) => {
     }
 });
 
-// Rotas da API
+// Create New Equipment
+app.post('/api/equipments', authenticateJWT, async (req, res) => {
+    try {
+        const db = await getDB();
+        const { name, model, description, equipment_type } = req.body;
+        if (!name || !model) {
+            return res.status(400).json({ error: 'Nome e Modelo do equipamento são obrigatórios.' });
+        }
+        const result = await db.run(
+            'INSERT INTO equipments (name, model, description, equipment_type, status) VALUES (?, ?, ?, ?, ?)',
+            [name, model, description || '', equipment_type || 'tsq-9610', 'ok']
+        );
+        const newId = result.lastID;
+        // Grant permissions to admin user by default
+        await db.run('INSERT OR IGNORE INTO user_permissions (user_id, equipment_id) VALUES (1, ?)', [newId]);
+        appendTxtLog(`Novo equipamento '${name}' (ID: ${newId}) cadastrado por ${req.user ? req.user.username : 'admin'}.`);
+
+        const eqs = await db.all('SELECT * FROM equipments');
+        for (let eq of eqs) {
+            const config = equipmentsConfig[eq.equipment_type] || equipmentsConfig['tsq-9610'];
+            eq.status = await evaluateEquipmentStatus(db, eq, config);
+        }
+        res.json({ success: true, equipments: eqs });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete Equipment
+app.delete('/api/equipments/:id', authenticateJWT, async (req, res) => {
+    try {
+        const db = await getDB();
+        const { id } = req.params;
+        await db.run('DELETE FROM equipments WHERE id = ?', [id]);
+        await db.run('DELETE FROM saved_logs WHERE equipment_id = ?', [id]);
+        await db.run('DELETE FROM tune_data WHERE equipment_id = ?', [id]);
+        await db.run('DELETE FROM corrective_records WHERE equipment_id = ?', [id]);
+        await db.run('DELETE FROM chromatographic_columns WHERE equipment_id = ?', [id]);
+        await db.run('DELETE FROM bookings WHERE equipment_id = ?', [id]);
+        await db.run('DELETE FROM user_permissions WHERE equipment_id = ?', [id]);
+
+        appendTxtLog(`Equipamento ID ${id} e todos os seus registros associados foram excluídos.`);
+        const eqs = await db.all('SELECT * FROM equipments');
+        for (let eq of eqs) {
+            const config = equipmentsConfig[eq.equipment_type] || equipmentsConfig['tsq-9610'];
+            eq.status = await evaluateEquipmentStatus(db, eq, config);
+        }
+        res.json({ success: true, equipments: eqs });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Equipment Data (Logs, Tunes, Bookings, Columns)
 app.get('/api/data', async (req, res) => {
     try {
+        const db = await getDB();
         const eqId = req.query.equipment_id || 1;
         const tuneData = await db.all('SELECT * FROM tune_data WHERE equipment_id = ? ORDER BY num ASC', [eqId]);
         const logs = await db.all('SELECT * FROM saved_logs WHERE equipment_id = ? ORDER BY id ASC', [eqId]);
@@ -260,9 +235,9 @@ app.get('/api/data', async (req, res) => {
         const bookings = await db.all('SELECT * FROM bookings WHERE equipment_id = ? ORDER BY start_date ASC, id ASC', [eqId]);
 
         res.json({
-            tuneData: tuneData,
+            tuneData: tuneData.map(mergeJson),
             injectByMonth: injectByMonth,
-            savedLogs: logs,
+            savedLogs: logs.map(mergeJson),
             correctiveRecords: corrective,
             columns: columns,
             bookings: bookings
@@ -272,49 +247,62 @@ app.get('/api/data', async (req, res) => {
     }
 });
 
+// Save Tune
 app.post('/api/tune', authenticateJWT, async (req, res) => {
     try {
+        const db = await getDB();
         const tune = req.body;
         const eqId = tune.equipment_id || 1;
-        await db.run('INSERT INTO tune_data (num, date, op, fil, emv, tint, m69, m219, m502, m18, m28, m32, equipment_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [tune.num, tune.date, tune.op, tune.fil, tune.emv, tune.tint, tune.m69, tune.m219, tune.m502, tune.m18, tune.m28, tune.m32, eqId]);
+        const { num, date, op, ...extra } = tune;
 
-        appendTxtLog(`Novo Tune #${tune.num} registrado pelo operador ${tune.op || 'Desconhecido'}. (EMV: ${tune.emv}V)`);
+        await db.run(
+            'INSERT INTO tune_data (equipment_id, num, date, op, data_json) VALUES (?, ?, ?, ?, ?)',
+            [eqId, num, date, op, JSON.stringify(extra)]
+        );
+
+        appendTxtLog(`Novo Tune #${num} registrado pelo operador ${op || 'Desconhecido'} no Eq ${eqId}.`);
 
         const records = await db.all('SELECT * FROM tune_data WHERE equipment_id = ? ORDER BY num ASC', [eqId]);
-        res.json({ success: true, tuneData: records });
+        res.json({ success: true, tuneData: records.map(mergeJson) });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
+// Save Daily Log
 app.post('/api/logs', authenticateJWT, async (req, res) => {
     try {
+        const db = await getDB();
         const newLog = req.body;
         const eqId = newLog.equipment_id || 1;
-        await db.run(`INSERT INTO saved_logs 
-            (date, op, psi, inj, obs, sistema, he, collision_gas, limpinj, septo, liner, col_model, corte, trpi, limpfonte, trocaoleo, tamb, equipment_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [newLog.date, newLog.op, newLog.psi, newLog.inj, newLog.obs, newLog.sistema, newLog.he, newLog.collision_gas,
-            newLog.limpinj, newLog.septo, newLog.liner, newLog.col_model, newLog.corte, newLog.trpi, newLog.limpfonte, newLog.trocaoleo, newLog.tamb, eqId]);
+        const { date, op, sistema, inj, tamb, obs, ...extra } = newLog;
 
-        appendTxtLog(`Novo registro diário adicionado pelo operador ${newLog.op || 'Desconhecido'}. (Injeções: ${newLog.inj || 0}, Psi: ${newLog.psi || '—'})`);
+        await db.run(
+            'INSERT INTO saved_logs (equipment_id, date, op, sistema, inj, tamb, obs, data_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [eqId, date, op, sistema, parseInt(inj) || 0, parseFloat(tamb) || null, obs, JSON.stringify(extra)]
+        );
+
+        appendTxtLog(`Novo registro diário adicionado pelo operador ${op || 'Desconhecido'} no Eq ${eqId}. (Injeções: ${inj || 0})`);
 
         const logs = await db.all('SELECT * FROM saved_logs WHERE equipment_id = ? ORDER BY id ASC', [eqId]);
-        res.json({ success: true, savedLogs: logs });
+        res.json({ success: true, savedLogs: logs.map(mergeJson) });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
+// Save Corrective Record
 app.post('/api/corrective', authenticateJWT, async (req, res) => {
     try {
+        const db = await getDB();
         const newRecord = req.body;
         const eqId = newRecord.equipment_id || 1;
-        await db.run('INSERT INTO corrective_records (date, resp, sup, prob, proc, result, equipment_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [newRecord.date, newRecord.resp, newRecord.sup, newRecord.prob, newRecord.proc, newRecord.result, eqId]);
+        await db.run(
+            'INSERT INTO corrective_records (date, resp, sup, prob, proc, result, equipment_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [newRecord.date, newRecord.resp, newRecord.sup, newRecord.prob, newRecord.proc, newRecord.result, eqId]
+        );
 
-        appendTxtLog(`Manutenção corretiva registrada por ${newRecord.resp} - Problema: ${newRecord.prob}`);
+        appendTxtLog(`Manutenção corretiva registrada no Eq ${eqId} por ${newRecord.resp} - Problema: ${newRecord.prob}`);
 
         const records = await db.all('SELECT * FROM corrective_records WHERE equipment_id = ? ORDER BY id ASC', [eqId]);
         res.json({ success: true, correctiveRecords: records });
@@ -323,8 +311,10 @@ app.post('/api/corrective', authenticateJWT, async (req, res) => {
     }
 });
 
+// Delete Corrective Record
 app.delete('/api/corrective/:id', authenticateJWT, async (req, res) => {
     try {
+        const db = await getDB();
         const { id } = req.params;
         const eqId = req.query.equipment_id || 1;
         await db.run('DELETE FROM corrective_records WHERE id = ? AND equipment_id = ?', [id, eqId]);
@@ -336,9 +326,10 @@ app.delete('/api/corrective/:id', authenticateJWT, async (req, res) => {
     }
 });
 
-// Rotas de Colunas
+// Get Chromatographic Columns
 app.get('/api/columns', async (req, res) => {
     try {
+        const db = await getDB();
         const eqId = req.query.equipment_id || 1;
         const cols = await db.all('SELECT * FROM chromatographic_columns WHERE equipment_id = ? ORDER BY id DESC', [eqId]);
         res.json(cols);
@@ -347,12 +338,16 @@ app.get('/api/columns', async (req, res) => {
     }
 });
 
+// Save Chromatographic Column
 app.post('/api/columns', authenticateJWT, async (req, res) => {
     try {
+        const db = await getDB();
         const c = req.body;
         const eqId = c.equipment_id || 1;
-        await db.run('INSERT INTO chromatographic_columns (type, model, serial, install_date, initial_length, status, project, obs, equipment_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [c.type, c.model, c.serial, c.install_date, c.initial_length, c.status, c.project || '', c.obs || '', eqId]);
+        await db.run(
+            'INSERT INTO chromatographic_columns (type, model, serial, install_date, initial_length, status, project, obs, equipment_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [c.type, c.model, c.serial, c.install_date, c.initial_length, c.status, c.project || '', c.obs || '', eqId]
+        );
         const cols = await db.all('SELECT * FROM chromatographic_columns WHERE equipment_id = ? ORDER BY id DESC', [eqId]);
         res.json({ success: true, columns: cols });
     } catch (error) {
@@ -360,8 +355,10 @@ app.post('/api/columns', authenticateJWT, async (req, res) => {
     }
 });
 
+// Delete Column
 app.delete('/api/columns/:id', authenticateJWT, async (req, res) => {
     try {
+        const db = await getDB();
         const { id } = req.params;
         const eqId = req.query.equipment_id || 1;
         await db.run('DELETE FROM chromatographic_columns WHERE id = ? AND equipment_id = ?', [id, eqId]);
@@ -372,9 +369,10 @@ app.delete('/api/columns/:id', authenticateJWT, async (req, res) => {
     }
 });
 
-// Rotas de Agendamentos (Bookings)
+// Save Booking
 app.post('/api/bookings', authenticateJWT, async (req, res) => {
     try {
+        const db = await getDB();
         const { start_date, end_date, operator, requester, obs, equipment_id } = req.body;
         const eqId = equipment_id || 1;
 
@@ -386,8 +384,7 @@ app.post('/api/bookings', authenticateJWT, async (req, res) => {
             return res.status(400).json({ error: "A data de início não pode ser posterior à data de término." });
         }
 
-        // Validar sobreposição de períodos:
-        // Há sobreposição se: (start_date <= b.end_date) AND (end_date >= b.start_date)
+        // Check scheduling overlaps
         const overlap = await db.get(
             'SELECT COUNT(*) as count FROM bookings WHERE equipment_id = ? AND (start_date <= ?) AND (end_date >= ?)',
             [eqId, end_date, start_date]
@@ -402,7 +399,7 @@ app.post('/api/bookings', authenticateJWT, async (req, res) => {
             [start_date, end_date, operator, requester, obs || '', eqId]
         );
 
-        appendTxtLog(`Nova reserva registrada de ${start_date} a ${end_date} por ${requester} (Op: ${operator}) no Eq ${eqId}`);
+        appendTxtLog(`Nova reserva de ${start_date} a ${end_date} por ${requester} (Op: ${operator}) no Eq ${eqId}`);
 
         const allBookings = await db.all('SELECT * FROM bookings WHERE equipment_id = ? ORDER BY start_date ASC, id ASC', [eqId]);
         res.json({ success: true, bookings: allBookings });
@@ -411,8 +408,10 @@ app.post('/api/bookings', authenticateJWT, async (req, res) => {
     }
 });
 
+// Delete Booking
 app.delete('/api/bookings/:id', authenticateJWT, async (req, res) => {
     try {
+        const db = await getDB();
         const { id } = req.params;
         const eqId = req.query.equipment_id || 1;
         await db.run('DELETE FROM bookings WHERE id = ? AND equipment_id = ?', [id, eqId]);
@@ -429,10 +428,11 @@ app.post('/api/debug', (req, res) => {
     res.json({ ok: true });
 });
 
+// Initialize database and start the server
+const db = getDB();
 initDB().then(() => {
     app.listen(PORT, () => {
         console.log(`Servidor rodando em http://localhost:${PORT}`);
-        console.log('Acesse o dashboard pelo navegador usando o link acima.');
     });
 }).catch(err => {
     console.error("Falha ao inicializar o banco de dados:", err);

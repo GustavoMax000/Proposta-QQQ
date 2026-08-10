@@ -17,7 +17,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('./sw.js')
           .then(reg => console.log('Service Worker registrado!', reg))
           .catch(err => console.log('Erro no Service Worker', err));
       });
@@ -33,6 +33,7 @@
       <div class="hub-title">Hub de <span>Equipamentos</span></div>
       <div class="hub-user">
         <span id="hub-user-name" style="margin-right: 15px; color: var(--muted);">Não logado</span>
+        <button class="btn btn-primary" id="btn-add-equip-hub" onclick="openEquipmentModal()" style="margin-right:8px;">+ Novo Equipamento</button>
         <button class="btn btn-outline" id="btn-login-hub" onclick="openLoginModal()">Login</button>
         <button class="btn btn-outline" id="btn-logout-hub" style="display:none;" onclick="logout()">Sair</button>
       </div>
@@ -41,6 +42,13 @@
       <!-- Cards de equipamentos carregados dinamicamente -->
     </div>
   </div>
+
+  <!-- MOBILE TOPBAR & SIDEBAR OVERLAY -->
+  <div id="mobile-topbar" class="mobile-topbar">
+    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menu">☰</button>
+    <div class="mobile-logo-title" id="mobile-logo-title">Dashboard Equipamentos</div>
+  </div>
+  <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeMobileSidebar()"></div>
 
   <!-- SIDEBAR -->
   <nav id="sidebar" style="display: none;">
@@ -83,14 +91,15 @@
       <span class="icon">📄</span> Exportar PDF
     </div>
 
-    <!-- MINI CALENDÁRIO MENSUAL -->
-    <div id="sidebar-calendar-container" class="sidebar-mini-calendar"></div>
-
-    <div class="sidebar-status">
-      <div class="status-pill" id="sidebar-status-pill">
-        <span class="status-dot" id="sidebar-status-dot"></span> <span id="sidebar-status-text">Operacional</span>
+    <!-- FOOTER COM CALENDÁRIO E STATUS -->
+    <div class="sidebar-footer">
+      <div id="sidebar-calendar-container" class="sidebar-mini-calendar"></div>
+      <div class="sidebar-status">
+        <div class="status-pill" id="sidebar-status-pill">
+          <span class="status-dot" id="sidebar-status-dot"></span> <span id="sidebar-status-text">Operacional</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px;" id="sidebar-date"></div>
       </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:6px;" id="sidebar-date"></div>
     </div>
   </nav>
 
@@ -673,83 +682,10 @@
                 </select>
               </div>
               <div class="form-field">
-                <label>Pressão Injetor (psi)</label>
-                <input type="number" id="log-psi" placeholder="14.0" step="0.1">
-              </div>
-              <div class="form-field">
                 <label>Nº Injeções</label>
                 <input type="number" id="log-inj" placeholder="0">
               </div>
-              <div class="form-field">
-                <label>Corte da Coluna (cm)</label>
-                <input type="number" id="log-corte" placeholder="—" step="0.5">
-              </div>
-              <div class="form-field">
-                <label>tR do PI (min)</label>
-                <input type="number" id="log-trpi" placeholder="—" step="0.01">
-              </div>
-              <div class="form-field">
-                <label>Troca Cilindro He</label>
-                <select id="log-he">
-                  <option value="">Não</option>
-                  <option value="SIM">SIM</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Troca Cilindro Gás Colisão</label>
-                <select id="log-collision-gas">
-                  <option value="">Não</option>
-                  <option value="SIM">SIM</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Limpeza Injetor</label>
-                <select id="log-limpinj">
-                  <option value="">Não</option>
-                  <option value="SIM">SIM</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Troca Septo</label>
-                <select id="log-septo">
-                  <option value="">Não</option>
-                  <option value="SIM">SIM</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Troca Liner</label>
-                <select id="log-liner">
-                  <option value="">Não</option>
-                  <option value="SIM">SIM</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Troca Coluna</label>
-                <select id="log-col">
-                  <option value="">Não</option>
-                  <option value="SIM">SIM</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Selecione a Coluna</label>
-                <select id="log-col-model">
-                  <option value="">— Selecione uma coluna —</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Limpeza Fonte</label>
-                <select id="log-limpfonte">
-                  <option value="">Não</option>
-                  <option value="SIM">SIM</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>Troca oléo da bomba de vácuo</label>
-                <select id="log-trocaoleo">
-                  <option value="">Não</option>
-                  <option value="SIM">SIM</option>
-                </select>
-              </div>
+              <div id="dynamic-log-form-fields" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;"></div>
               <div class="form-field form-full">
                 <label>Observações</label>
                 <textarea id="log-obs" placeholder="Registre qualquer ocorrência relevante..."></textarea>
@@ -1441,7 +1377,42 @@
     </div>
   </div>
 
-  <script src="js/script.js"></script>
+  <!-- NEW EQUIPMENT MODAL -->
+  <div class="modal-overlay" id="equipment-modal" style="display:none;">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-title">Cadastrar Novo Equipamento</div>
+        <button class="modal-close" onclick="closeEquipmentModal()">×</button>
+      </div>
+      <div class="modal-body" style="padding-top: 16px;">
+        <div class="form-group mb16">
+          <label class="form-label" style="font-size:11px; color:var(--muted); text-transform:uppercase; font-family:'Space Mono', monospace;">Nome do Equipamento *</label>
+          <input type="text" class="form-input" id="eq-name" placeholder="Ex: Agilent 8890 GC-FID" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg3);">
+        </div>
+        <div class="form-group mb16">
+          <label class="form-label" style="font-size:11px; color:var(--muted); text-transform:uppercase; font-family:'Space Mono', monospace;">Modelo / Fabricante *</label>
+          <input type="text" class="form-input" id="eq-model" placeholder="Ex: Agilent Technologies" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg3);">
+        </div>
+        <div class="form-group mb16">
+          <label class="form-label" style="font-size:11px; color:var(--muted); text-transform:uppercase; font-family:'Space Mono', monospace;">Tipo / Configuração *</label>
+          <select id="eq-type" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg3); color:var(--text);">
+            <option value="tsq-9610">GC/MS - TSQ 9610 (Cromatografia Gasosa com MS/MS)</option>
+            <option value="generic-hplc">HPLC-UV (Cromatografia Líquida de Alta Eficiência)</option>
+          </select>
+        </div>
+        <div class="form-group mb16">
+          <label class="form-label" style="font-size:11px; color:var(--muted); text-transform:uppercase; font-family:'Space Mono', monospace;">Descrição Curta</label>
+          <textarea id="eq-desc" rows="2" placeholder="Ex: Equipamento de análise quantitativa de pesticidas..." style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg3); color:var(--text);"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid var(--border); padding-top:16px;">
+        <button class="btn btn-outline" onclick="closeEquipmentModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveEquipment()">Salvar Equipamento</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
 </body>
 
 </html>

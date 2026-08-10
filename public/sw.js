@@ -1,9 +1,13 @@
-const CACHE_NAME = 'tsq-dashboard-v21';
+const CACHE_NAME = 'tsq-dashboard-v24';
 const ASSETS = [
   '/',
   '/index.html',
   '/css/style.css',
-  '/js/script.js',
+  '/js/app.js',
+  '/js/api.js',
+  '/js/dom.js',
+  '/js/charts.js',
+  '/js/pdf.js',
   '/assets/icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
   'https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Roboto:wght@300;400;500;700&family=Roboto+Condensed:wght@400;700&display=swap'
