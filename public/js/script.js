@@ -118,10 +118,14 @@ const checklistItems = [
 function showPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
+  const target = document.getElementById('page-' + page);
+  if (target) target.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + page + "'")) n.classList.add('active');
   });
+  if (page === 'solicitacao') {
+    initSolicitacaoPage();
+  }
 }
 
 // =====================================================================
@@ -3104,3 +3108,516 @@ document.addEventListener('DOMContentLoaded', async () => {
     showConnectionError("server", e.message);
   }
 });
+
+// =====================================================================
+// SOLICITAÇÃO DE ANÁLISE — GC-MS (DOCUMENTO OFICIAL 9.847 V.00)
+// =====================================================================
+let currentSolicitacaoId = null;
+let solicitacoesList = [];
+
+function initSolicitacaoPage() {
+  const reqDate = document.getElementById('req-date');
+  if (reqDate && !reqDate.value) {
+    reqDate.value = new Date().toISOString().split('T')[0];
+  }
+  
+  const formContainer = document.getElementById('solicitacao-tab-form-content');
+  if (formContainer && !formContainer.dataset.listenersAttached) {
+    formContainer.addEventListener('input', updateSolicitacaoPreview);
+    formContainer.addEventListener('change', updateSolicitacaoPreview);
+    formContainer.dataset.listenersAttached = 'true';
+  }
+
+  updateSolicitacaoPreview();
+  loadSolicitacoesList();
+}
+
+function switchSolicitacaoTab(tab) {
+  const formBtn = document.getElementById('sol-tab-form-btn');
+  const previewBtn = document.getElementById('sol-tab-preview-btn');
+  const historyBtn = document.getElementById('sol-tab-history-btn');
+
+  const formContent = document.getElementById('solicitacao-tab-form-content');
+  const previewContent = document.getElementById('solicitacao-tab-preview-content');
+  const historyContent = document.getElementById('solicitacao-tab-history-content');
+
+  [formBtn, previewBtn, historyBtn].forEach(b => {
+    if (b) {
+      b.classList.remove('btn-primary');
+      b.classList.add('btn-outline');
+    }
+  });
+
+  if (formContent) formContent.style.display = 'none';
+  if (previewContent) previewContent.style.display = 'none';
+  if (historyContent) historyContent.style.display = 'none';
+
+  if (tab === 'form') {
+    if (formBtn) { formBtn.classList.remove('btn-outline'); formBtn.classList.add('btn-primary'); }
+    if (formContent) formContent.style.display = 'block';
+  } else if (tab === 'preview') {
+    if (previewBtn) { previewBtn.classList.remove('btn-outline'); previewBtn.classList.add('btn-primary'); }
+    if (previewContent) previewContent.style.display = 'flex';
+    updateSolicitacaoPreview();
+  } else if (tab === 'history') {
+    if (historyBtn) { historyBtn.classList.remove('btn-outline'); historyBtn.classList.add('btn-primary'); }
+    if (historyContent) historyContent.style.display = 'block';
+    loadSolicitacoesList();
+  }
+}
+
+function toggleInjectionModeFields() {
+  const mode = document.getElementById('req-modo-inj').value;
+  const fSemDivisao = document.getElementById('field-tempo-sem-divisao');
+  const fRazaoSplit = document.getElementById('field-razao-split');
+  if (mode === 'Splitless') {
+    if (fSemDivisao) fSemDivisao.style.display = 'block';
+    if (fRazaoSplit) fRazaoSplit.style.display = 'none';
+  } else {
+    if (fSemDivisao) fSemDivisao.style.display = 'none';
+    if (fRazaoSplit) fRazaoSplit.style.display = 'block';
+  }
+  updateSolicitacaoPreview();
+}
+
+function toggleAnalysisTypeFields() {
+  const type = document.getElementById('req-tipo-analise').value;
+  const fScan = document.getElementById('field-scan-range');
+  const fSim = document.getElementById('field-sim-ions');
+  if (type === 'Scan') {
+    if (fScan) fScan.style.display = 'block';
+    if (fSim) fSim.style.display = 'none';
+  } else {
+    if (fScan) fScan.style.display = 'none';
+    if (fSim) fSim.style.display = 'block';
+  }
+  updateSolicitacaoPreview();
+}
+
+function formatDateBR(dateStr) {
+  if (!dateStr) return '—';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
+
+function updateSolicitacaoPreview() {
+  const val = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  };
+  const setPv = (pvId, text) => {
+    const el = document.getElementById(pvId);
+    if (el) el.textContent = text || '—';
+  };
+
+  setPv('pv-date', formatDateBR(val('req-date')));
+  setPv('pv-order', val('req-order'));
+  setPv('pv-received-by', val('req-received-by'));
+  setPv('pv-name', val('req-name'));
+  setPv('pv-phone', val('req-phone'));
+  setPv('pv-email', val('req-email'));
+  setPv('pv-dept', val('req-dept'));
+
+  setPv('pv-sample-count', val('req-sample-count'));
+  setPv('pv-sample-matrix', val('req-sample-matrix'));
+  setPv('pv-sample-solvent', val('req-sample-solvent'));
+  setPv('pv-sample-concentration', val('req-sample-concentration'));
+  setPv('pv-sample-codes', val('req-sample-codes'));
+  setPv('pv-sample-info', val('req-sample-info'));
+
+  setPv('pv-column', val('req-column'));
+  setPv('pv-col-dimensions', val('req-col-dimensions'));
+  setPv('pv-routine-method', val('req-routine-method'));
+
+  setPv('pv-r1-init', val('req-ramp1-tinit'));
+  setPv('pv-r1-rate', val('req-ramp1-rate'));
+  setPv('pv-r1-final', val('req-ramp1-tfinal'));
+  setPv('pv-r1-hold', val('req-ramp1-hold'));
+
+  setPv('pv-r2-init', val('req-ramp2-tinit'));
+  setPv('pv-r2-rate', val('req-ramp2-rate'));
+  setPv('pv-r2-final', val('req-ramp2-tfinal'));
+  setPv('pv-r2-hold', val('req-ramp2-hold'));
+
+  setPv('pv-r3-init', val('req-ramp3-tinit'));
+  setPv('pv-r3-rate', val('req-ramp3-rate'));
+  setPv('pv-r3-final', val('req-ramp3-tfinal'));
+  setPv('pv-r3-hold', val('req-ramp3-hold'));
+
+  setPv('pv-r4-init', val('req-ramp4-tinit'));
+  setPv('pv-r4-rate', val('req-ramp4-rate'));
+  setPv('pv-r4-final', val('req-ramp4-tfinal'));
+  setPv('pv-r4-hold', val('req-ramp4-hold'));
+
+  setPv('pv-temp-inj', val('req-temp-inj'));
+  setPv('pv-vol-inj', val('req-vol-inj'));
+  setPv('pv-vazao', val('req-vazao'));
+  setPv('pv-fluxo-purga', val('req-fluxo-purga'));
+  setPv('pv-delay-solvente', val('req-delay-solvente'));
+  setPv('pv-temp-interface', val('req-temp-interface'));
+  setPv('pv-temp-fonte', val('req-temp-fonte'));
+
+  const modoInj = val('req-modo-inj');
+  const chkSplitless = document.getElementById('chk-splitless');
+  const chkSplit = document.getElementById('chk-split');
+  if (modoInj === 'Splitless') {
+    if (chkSplitless) chkSplitless.textContent = '[X]';
+    if (chkSplit) chkSplit.textContent = '[ ]';
+    setPv('pv-tempo-sem-divisao', val('req-tempo-sem-divisao'));
+    setPv('pv-razao-split', '—');
+  } else {
+    if (chkSplitless) chkSplitless.textContent = '[ ]';
+    if (chkSplit) chkSplit.textContent = '[X]';
+    setPv('pv-tempo-sem-divisao', '—');
+    setPv('pv-razao-split', val('req-razao-split'));
+  }
+
+  const tipoAnalise = val('req-tipo-analise');
+  const chkScan = document.getElementById('chk-scan');
+  const chkSim = document.getElementById('chk-sim');
+  if (tipoAnalise === 'Scan') {
+    if (chkScan) chkScan.textContent = '[X]';
+    if (chkSim) chkSim.textContent = '[ ]';
+    setPv('pv-scan-range', val('req-scan-range'));
+    setPv('pv-sim-ions', '—');
+  } else {
+    if (chkScan) chkScan.textContent = '[ ]';
+    if (chkSim) chkSim.textContent = '[X]';
+    setPv('pv-scan-range', '—');
+    setPv('pv-sim-ions', val('req-sim-ions'));
+  }
+
+  setPv('pv-analysis-date', formatDateBR(val('req-analysis-date')));
+  setPv('pv-tech-resp', val('req-tech-resp'));
+}
+
+function clearSolicitacaoForm() {
+  currentSolicitacaoId = null;
+  const formFields = [
+    'req-order', 'req-received-by', 'req-name', 'req-phone', 'req-email', 'req-dept',
+    'req-sample-matrix', 'req-sample-solvent', 'req-sample-concentration', 'req-sample-codes', 'req-sample-info',
+    'req-column', 'req-col-dimensions', 'req-routine-method',
+    'req-ramp1-tinit', 'req-ramp1-rate', 'req-ramp1-tfinal', 'req-ramp1-hold',
+    'req-ramp2-tinit', 'req-ramp2-rate', 'req-ramp2-tfinal', 'req-ramp2-hold',
+    'req-ramp3-tinit', 'req-ramp3-rate', 'req-ramp3-tfinal', 'req-ramp3-hold',
+    'req-ramp4-tinit', 'req-ramp4-rate', 'req-ramp4-tfinal', 'req-ramp4-hold',
+    'req-temp-inj', 'req-vol-inj', 'req-vazao', 'req-fluxo-purga', 'req-delay-solvente',
+    'req-tempo-sem-divisao', 'req-razao-split', 'req-temp-interface', 'req-temp-fonte',
+    'req-scan-range', 'req-sim-ions', 'req-analysis-date', 'req-tech-resp'
+  ];
+
+  formFields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  const reqDate = document.getElementById('req-date');
+  if (reqDate) reqDate.value = new Date().toISOString().split('T')[0];
+
+  const sampleCount = document.getElementById('req-sample-count');
+  if (sampleCount) sampleCount.value = 1;
+
+  const modoInj = document.getElementById('req-modo-inj');
+  if (modoInj) modoInj.value = 'Splitless';
+  toggleInjectionModeFields();
+
+  const tipoAnalise = document.getElementById('req-tipo-analise');
+  if (tipoAnalise) tipoAnalise.value = 'Scan';
+  toggleAnalysisTypeFields();
+
+  updateSolicitacaoPreview();
+  switchSolicitacaoTab('form');
+}
+
+async function saveSolicitacao() {
+  const reqName = document.getElementById('req-name').value.trim();
+  const reqDate = document.getElementById('req-date').value;
+
+  if (!reqDate) {
+    alert('Por favor, informe a Data do Pedido.');
+    return;
+  }
+  if (!reqName) {
+    alert('Por favor, informe o Nome do Solicitante.');
+    return;
+  }
+
+  const payload = {
+    id: currentSolicitacaoId,
+    order_number: document.getElementById('req-order').value.trim(),
+    request_date: reqDate,
+    received_by: document.getElementById('req-received-by').value.trim(),
+    requester_name: reqName,
+    requester_phone: document.getElementById('req-phone').value.trim(),
+    requester_email: document.getElementById('req-email').value.trim(),
+    requester_dept: document.getElementById('req-dept').value.trim(),
+    sample_count: parseInt(document.getElementById('req-sample-count').value) || 1,
+    sample_codes: document.getElementById('req-sample-codes').value.trim(),
+    sample_matrix: document.getElementById('req-sample-matrix').value.trim(),
+    sample_solvent: document.getElementById('req-sample-solvent').value.trim(),
+    sample_concentration: document.getElementById('req-sample-concentration').value.trim(),
+    sample_info: document.getElementById('req-sample-info').value.trim(),
+    column_name: document.getElementById('req-column').value.trim(),
+    column_dimensions: document.getElementById('req-col-dimensions').value.trim(),
+    routine_method: document.getElementById('req-routine-method').value.trim(),
+    temp_program_json: {
+      r1: { tinit: document.getElementById('req-ramp1-tinit').value, rate: document.getElementById('req-ramp1-rate').value, tfinal: document.getElementById('req-ramp1-tfinal').value, hold: document.getElementById('req-ramp1-hold').value },
+      r2: { tinit: document.getElementById('req-ramp2-tinit').value, rate: document.getElementById('req-ramp2-rate').value, tfinal: document.getElementById('req-ramp2-tfinal').value, hold: document.getElementById('req-ramp2-hold').value },
+      r3: { tinit: document.getElementById('req-ramp3-tinit').value, rate: document.getElementById('req-ramp3-rate').value, tfinal: document.getElementById('req-ramp3-tfinal').value, hold: document.getElementById('req-ramp3-hold').value },
+      r4: { tinit: document.getElementById('req-ramp4-tinit').value, rate: document.getElementById('req-ramp4-rate').value, tfinal: document.getElementById('req-ramp4-tfinal').value, hold: document.getElementById('req-ramp4-hold').value }
+    },
+    equipment_params_json: {
+      temp_inj: document.getElementById('req-temp-inj').value,
+      vol_inj: document.getElementById('req-vol-inj').value,
+      vazao: document.getElementById('req-vazao').value,
+      fluxo_purga: document.getElementById('req-fluxo-purga').value,
+      delay_solvente: document.getElementById('req-delay-solvente').value,
+      modo_inj: document.getElementById('req-modo-inj').value,
+      tempo_sem_divisao: document.getElementById('req-tempo-sem-divisao').value,
+      razao_split: document.getElementById('req-razao-split').value,
+      temp_interface: document.getElementById('req-temp-interface').value,
+      temp_fonte: document.getElementById('req-temp-fonte').value
+    },
+    analysis_type: document.getElementById('req-tipo-analise').value,
+    scan_range: document.getElementById('req-scan-range').value.trim(),
+    sim_ions: document.getElementById('req-sim-ions').value.trim(),
+    analysis_date: document.getElementById('req-analysis-date').value,
+    tech_resp: document.getElementById('req-tech-resp').value.trim()
+  };
+
+  try {
+    const res = await fetch('/api/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (data.order_number) {
+        document.getElementById('req-order').value = data.order_number;
+      }
+      alert(`Solicitação de Análise gravada com sucesso! (Nº ${data.order_number})`);
+      updateSolicitacaoPreview();
+      loadSolicitacoesList();
+    } else {
+      alert('Erro ao salvar solicitação: ' + data.error);
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Erro de conexão ao salvar a solicitação.');
+  }
+}
+
+async function loadSolicitacoesList() {
+  try {
+    const queryInput = document.getElementById('sol-search-input');
+    const query = queryInput ? queryInput.value.trim() : '';
+    const res = await fetch(`/api/requests?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    if (data.success) {
+      solicitacoesList = data.requests || [];
+      renderSolicitacoesTable(solicitacoesList);
+    }
+  } catch (err) {
+    console.error('Erro ao carregar solicitações:', err);
+  }
+}
+
+function searchSolicitacoes() {
+  loadSolicitacoesList();
+}
+
+function clearSolicitacaoSearch() {
+  const input = document.getElementById('sol-search-input');
+  if (input) input.value = '';
+  loadSolicitacoesList();
+}
+
+function renderSolicitacoesTable(requests) {
+  const tbody = document.getElementById('solicitacoes-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (requests.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--muted);">Nenhuma solicitação encontrada.</td></tr>`;
+    return;
+  }
+
+  requests.forEach(req => {
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid var(--border)';
+    tr.innerHTML = `
+      <td style="padding:8px; font-weight:600; font-family:'Space Mono', monospace;">${req.order_number || '—'}</td>
+      <td style="padding:8px;">${formatDateBR(req.request_date)}</td>
+      <td style="padding:8px; font-weight:500;">${req.requester_name || '—'}</td>
+      <td style="padding:8px; color:var(--muted);">${req.requester_dept || '—'}</td>
+      <td style="padding:8px;">${req.sample_count || 1} am. (${req.sample_codes || '—'})</td>
+      <td style="padding:8px;"><span class="tag highlight">${req.analysis_type || 'Scan'}</span> ${req.routine_method ? '· ' + req.routine_method : ''}</td>
+      <td style="padding:8px; text-align:center;">
+        <button class="btn btn-outline" style="padding:3px 8px; font-size:11px; margin-right:4px;" onclick="loadSolicitacaoIntoForm(${req.id})">✏ Editar</button>
+        <button class="btn btn-amber" style="padding:3px 8px; font-size:11px; margin-right:4px;" onclick="loadSolicitacaoIntoForm(${req.id}); switchSolicitacaoTab('preview');">👁 Ver Ficha</button>
+        <button class="btn btn-outline" style="padding:3px 8px; font-size:11px; color:var(--red); border-color:var(--red);" onclick="deleteSolicitacao(${req.id})">🗑 Excluir</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function loadSolicitacaoIntoForm(id) {
+  const req = solicitacoesList.find(r => r.id === id);
+  if (!req) return;
+
+  currentSolicitacaoId = req.id;
+  document.getElementById('req-date').value = req.request_date || '';
+  document.getElementById('req-order').value = req.order_number || '';
+  document.getElementById('req-received-by').value = req.received_by || '';
+  document.getElementById('req-name').value = req.requester_name || '';
+  document.getElementById('req-phone').value = req.requester_phone || '';
+  document.getElementById('req-email').value = req.requester_email || '';
+  document.getElementById('req-dept').value = req.requester_dept || '';
+
+  document.getElementById('req-sample-count').value = req.sample_count || 1;
+  document.getElementById('req-sample-matrix').value = req.sample_matrix || '';
+  document.getElementById('req-sample-solvent').value = req.sample_solvent || '';
+  document.getElementById('req-sample-concentration').value = req.sample_concentration || '';
+  document.getElementById('req-sample-codes').value = req.sample_codes || '';
+  document.getElementById('req-sample-info').value = req.sample_info || '';
+
+  document.getElementById('req-column').value = req.column_name || '';
+  document.getElementById('req-col-dimensions').value = req.column_dimensions || '';
+  document.getElementById('req-routine-method').value = req.routine_method || '';
+
+  let tempJson = {};
+  try { tempJson = typeof req.temp_program_json === 'string' ? JSON.parse(req.temp_program_json) : (req.temp_program_json || {}); } catch(e){}
+
+  if (tempJson.r1) {
+    document.getElementById('req-ramp1-tinit').value = tempJson.r1.tinit || '';
+    document.getElementById('req-ramp1-rate').value = tempJson.r1.rate || '';
+    document.getElementById('req-ramp1-tfinal').value = tempJson.r1.tfinal || '';
+    document.getElementById('req-ramp1-hold').value = tempJson.r1.hold || '';
+  }
+  if (tempJson.r2) {
+    document.getElementById('req-ramp2-tinit').value = tempJson.r2.tinit || '';
+    document.getElementById('req-ramp2-rate').value = tempJson.r2.rate || '';
+    document.getElementById('req-ramp2-tfinal').value = tempJson.r2.tfinal || '';
+    document.getElementById('req-ramp2-hold').value = tempJson.r2.hold || '';
+  }
+  if (tempJson.r3) {
+    document.getElementById('req-ramp3-tinit').value = tempJson.r3.tinit || '';
+    document.getElementById('req-ramp3-rate').value = tempJson.r3.rate || '';
+    document.getElementById('req-ramp3-tfinal').value = tempJson.r3.tfinal || '';
+    document.getElementById('req-ramp3-hold').value = tempJson.r3.hold || '';
+  }
+  if (tempJson.r4) {
+    document.getElementById('req-ramp4-tinit').value = tempJson.r4.tinit || '';
+    document.getElementById('req-ramp4-rate').value = tempJson.r4.rate || '';
+    document.getElementById('req-ramp4-tfinal').value = tempJson.r4.tfinal || '';
+    document.getElementById('req-ramp4-hold').value = tempJson.r4.hold || '';
+  }
+
+  let equipJson = {};
+  try { equipJson = typeof req.equipment_params_json === 'string' ? JSON.parse(req.equipment_params_json) : (req.equipment_params_json || {}); } catch(e){}
+
+  document.getElementById('req-temp-inj').value = equipJson.temp_inj || '';
+  document.getElementById('req-vol-inj').value = equipJson.vol_inj || '';
+  document.getElementById('req-vazao').value = equipJson.vazao || '';
+  document.getElementById('req-fluxo-purga').value = equipJson.fluxo_purga || '';
+  document.getElementById('req-delay-solvente').value = equipJson.delay_solvente || '';
+  document.getElementById('req-modo-inj').value = equipJson.modo_inj || 'Splitless';
+  document.getElementById('req-tempo-sem-divisao').value = equipJson.tempo_sem_divisao || '';
+  document.getElementById('req-razao-split').value = equipJson.razao_split || '';
+  document.getElementById('req-temp-interface').value = equipJson.temp_interface || '';
+  document.getElementById('req-temp-fonte').value = equipJson.temp_fonte || '';
+  toggleInjectionModeFields();
+
+  document.getElementById('req-tipo-analise').value = req.analysis_type || 'Scan';
+  document.getElementById('req-scan-range').value = req.scan_range || '';
+  document.getElementById('req-sim-ions').value = req.sim_ions || '';
+  toggleAnalysisTypeFields();
+
+  document.getElementById('req-analysis-date').value = req.analysis_date || '';
+  document.getElementById('req-tech-resp').value = req.tech_resp || '';
+
+  updateSolicitacaoPreview();
+  switchSolicitacaoTab('form');
+}
+
+async function deleteSolicitacao(id) {
+  if (!confirm('Deseja realmente excluir esta Solicitação de Análise?')) return;
+  try {
+    const res = await fetch(`/api/requests/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      alert('Solicitação excluída com sucesso.');
+      loadSolicitacoesList();
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Erro ao excluir solicitação.');
+  }
+}
+
+async function generateSolicitacaoPDF() {
+  updateSolicitacaoPreview();
+  const pdfOverlay = document.getElementById('pdf-overlay');
+  const pdfStatus = document.getElementById('pdf-status');
+
+  if (pdfOverlay) pdfOverlay.style.display = 'flex';
+  if (pdfStatus) pdfStatus.textContent = 'Renderizando documento oficial 9.847 V.00...';
+
+  try {
+    const docContainer = document.getElementById('official-ficha-document');
+    const previewTab = document.getElementById('solicitacao-tab-preview-content');
+
+    const prevDisplay = previewTab ? previewTab.style.display : 'none';
+    if (previewTab) previewTab.style.display = 'flex';
+
+    const pages = docContainer.querySelectorAll('.a4-page');
+    if (pages.length === 0) throw new Error('Páginas do documento não encontradas.');
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    for (let i = 0; i < pages.length; i++) {
+      if (pdfStatus) pdfStatus.textContent = `Processando Página ${i + 1} de 2...`;
+      const pageEl = pages[i];
+
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+      if (i > 0) {
+        pdf.addPage();
+      }
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+    }
+
+    if (previewTab) previewTab.style.display = prevDisplay;
+
+    const orderNum = document.getElementById('req-order').value.trim() || formatDateBR(document.getElementById('req-date').value).replace(/\//g, '');
+    const filename = `Ficha_Solicitacao_GC-MS_${orderNum || '9.847_V.00'}.pdf`;
+
+    pdf.save(filename);
+    if (pdfOverlay) pdfOverlay.style.display = 'none';
+  } catch (err) {
+    console.error(err);
+    if (pdfOverlay) pdfOverlay.style.display = 'none';
+    alert('Erro ao gerar o PDF da Ficha de Solicitação: ' + err.message);
+  }
+}
+
+function printSolicitacao() {
+  updateSolicitacaoPreview();
+  const previewTab = document.getElementById('solicitacao-tab-preview-content');
+  if (previewTab) previewTab.style.display = 'flex';
+  window.print();
+}

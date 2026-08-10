@@ -57,6 +57,9 @@
     <div class="nav-item" onclick="showPage('analise')">
       <span class="icon">📊</span> Análise Anual
     </div>
+    <div class="nav-item" onclick="showPage('solicitacao')">
+      <span class="icon">📝</span> Solicitação de Análise
+    </div>
 
     <div class="nav-section-label">Relatório</div>
     <div class="nav-item" onclick="generatePDF()">
@@ -1246,6 +1249,539 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ===== PAGE: SOLICITAÇÃO DE ANÁLISE (DOC 9.847 V.00) ===== -->
+    <div class="page" id="page-solicitacao">
+      <div class="top-bar">
+        <div class="page-title">Solicitação de <span>Análise – GC-MS</span></div>
+        <div class="top-actions" style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button class="btn btn-outline" onclick="clearSolicitacaoForm()">+ Nova Solicitação</button>
+          <button class="btn btn-outline" id="sol-tab-form-btn" onclick="switchSolicitacaoTab('form')">✍
+            Preencher</button>
+          <button class="btn btn-outline" id="sol-tab-preview-btn" onclick="switchSolicitacaoTab('preview')">👁
+            Visualizar Ficha (9.847 V.00)</button>
+          <button class="btn btn-outline" id="sol-tab-history-btn" onclick="switchSolicitacaoTab('history')">📂
+            Histórico</button>
+          <button class="btn btn-primary" onclick="saveSolicitacao()">💾 Salvar</button>
+          <button class="btn btn-amber" onclick="generateSolicitacaoPDF()">📄 Gerar PDF</button>
+          <button class="btn btn-outline" onclick="printSolicitacao()">🖨 Imprimir</button>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT 1: FORMULARIO -->
+      <div id="solicitacao-tab-form-content">
+        <div class="grid-2 mb24">
+          <!-- CARD 1: DADOS DA SOLICITAÇÃO E SOLICITANTE -->
+          <div class="card">
+            <div class="card-title">1. Dados da Solicitação & Solicitante</div>
+            <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+              <div class="form-field">
+                <label class="form-label">Data do Pedido *</label>
+                <input type="date" id="req-date" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Nº do Pedido</label>
+                <input type="text" id="req-order" placeholder="Ex: REQ-2026-001" class="form-input">
+              </div>
+              <div class="form-field" style="grid-column: span 2;">
+                <label class="form-label">Recebido por</label>
+                <input type="text" id="req-received-by" placeholder="Nome / Iniciais do técnico" class="form-input">
+              </div>
+              <div class="form-field" style="grid-column: span 2;">
+                <hr style="border-color:var(--border);">
+              </div>
+              <div class="form-field" style="grid-column: span 2;">
+                <label class="form-label">Nome do Solicitante *</label>
+                <input type="text" id="req-name" placeholder="Nome completo" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Telefone</label>
+                <input type="text" id="req-phone" placeholder="(XX) XXXXX-XXXX" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">E-mail</label>
+                <input type="email" id="req-email" placeholder="usuario@dominio.com" class="form-input">
+              </div>
+              <div class="form-field" style="grid-column: span 2;">
+                <label class="form-label">Instituição / Departamento</label>
+                <input type="text" id="req-dept" placeholder="Ex: UFRJ / Instituto de Química" class="form-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- CARD 2: DADOS DA(S) AMOSTRA(S) -->
+          <div class="card">
+            <div class="card-title">2. Dados da(s) Amostra(s)</div>
+            <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+              <div class="form-field">
+                <label class="form-label">Nº de Amostras *</label>
+                <input type="number" id="req-sample-count" min="1" value="1" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Matriz</label>
+                <input type="text" id="req-sample-matrix" placeholder="Ex: Óleo, Extrato Vegetal, Água"
+                  class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Solvente</label>
+                <input type="text" id="req-sample-solvent" placeholder="Ex: Diclorometano, Hexano, Metanol"
+                  class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Concentração</label>
+                <input type="text" id="req-sample-concentration" placeholder="Ex: 1.0 mg/mL, Puro" class="form-input">
+              </div>
+              <div class="form-field" style="grid-column: span 2;">
+                <label class="form-label">Código(s) da(s) Amostra(s)</label>
+                <textarea id="req-sample-codes" rows="2" placeholder="Ex: AM-01, AM-02, AM-03..." class="form-input"
+                  style="font-family:inherit;"></textarea>
+              </div>
+              <div class="form-field" style="grid-column: span 2;">
+                <label class="form-label">Outras Informações Relevantes</label>
+                <textarea id="req-sample-info" rows="2"
+                  placeholder="Instruções de conservação, toxicidade, volatilidade..." class="form-input"
+                  style="font-family:inherit;"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2 mb24">
+          <!-- CARD 3: CONDIÇÕES DE ANÁLISE -->
+          <div class="card">
+            <div class="card-title">3. Condições de Análise</div>
+            <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+              <div class="form-field" style="grid-column: span 2;">
+                <label class="form-label">Método de Rotina (se existente)</label>
+                <input type="text" id="req-routine-method" placeholder="Nome ou Nº do Método de Rotina existente"
+                  class="form-input">
+              </div>
+              <div class="form-field"
+                style="grid-column: span 2; background:rgba(13, 148, 136, 0.05); padding:10px; border-radius:6px; border:1px solid var(--border);">
+                <small style="color:var(--teal); font-size:11px; line-height:1.4; display:block;">
+                  ℹ <strong>Observação Oficial:</strong> Caso a análise solicitada utilize um método já existente no
+                  laboratório, preencher apenas o nome e/ou número do mesmo, não sendo necessário o preenchimento da
+                  programação de temperatura e demais informações referentes ao método.
+                </small>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Coluna Cromatográfica</label>
+                <input type="text" id="req-column" placeholder="Ex: HP-5MS, DB-5MS" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Dimensões da Coluna</label>
+                <input type="text" id="req-col-dimensions" placeholder="Ex: 30m x 0.25mm x 0.25µm" class="form-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- CARD 4: PROGRAMAÇÃO DE TEMPERATURA -->
+          <div class="card">
+            <div class="card-title">4. Programação de Temperatura (Forno)</div>
+            <div style="overflow-x:auto; margin-top:12px;">
+              <table class="data-table" style="width:100%; font-size:12px; border-collapse:collapse;">
+                <thead>
+                  <tr style="background:var(--bg3); color:var(--muted);">
+                    <th style="padding:6px;">Rampa</th>
+                    <th style="padding:6px;">Temp. Inicial (ºC)</th>
+                    <th style="padding:6px;">Taxa (ºC/min)</th>
+                    <th style="padding:6px;">Final (ºC)</th>
+                    <th style="padding:6px;">Isoterma (min)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="font-weight:600; padding:6px;">Rampa 1</td>
+                    <td><input type="number" step="0.1" id="req-ramp1-tinit" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp1-rate" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp1-tfinal" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp1-hold" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                  </tr>
+                  <tr>
+                    <td style="font-weight:600; padding:6px;">Rampa 2</td>
+                    <td><input type="number" step="0.1" id="req-ramp2-tinit" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp2-rate" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp2-tfinal" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp2-hold" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                  </tr>
+                  <tr>
+                    <td style="font-weight:600; padding:6px;">Rampa 3</td>
+                    <td><input type="number" step="0.1" id="req-ramp3-tinit" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp3-rate" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp3-tfinal" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp3-hold" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                  </tr>
+                  <tr>
+                    <td style="font-weight:600; padding:6px;">Rampa 4</td>
+                    <td><input type="number" step="0.1" id="req-ramp4-tinit" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp4-rate" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp4-tfinal" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                    <td><input type="number" step="0.1" id="req-ramp4-hold" class="form-input"
+                        style="padding:4px; font-size:12px;"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2 mb24">
+          <!-- CARD 5: PARÂMETROS DO EQUIPAMENTO -->
+          <div class="card">
+            <div class="card-title">5. Parâmetros do Equipamento</div>
+            <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+              <div class="form-field">
+                <label class="form-label">Temp. Injetor (ºC)</label>
+                <input type="number" id="req-temp-inj" placeholder="Ex: 250" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Volume de Injeção (µL)</label>
+                <input type="number" step="0.1" id="req-vol-inj" placeholder="Ex: 1.0" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Vazão (mL/min)</label>
+                <input type="number" step="0.1" id="req-vazao" placeholder="Ex: 1.2" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Fluxo de Purga (mL/min)</label>
+                <input type="number" step="0.1" id="req-fluxo-purga" placeholder="Ex: 5.0" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Delay do Solvente (min)</label>
+                <input type="number" step="0.1" id="req-delay-solvente" placeholder="Ex: 3.5" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Modo de Injeção</label>
+                <select id="req-modo-inj" class="form-input" onchange="toggleInjectionModeFields()">
+                  <option value="Splitless">Splitless (Sem divisão)</option>
+                  <option value="Split">Split (Com divisão)</option>
+                </select>
+              </div>
+              <div class="form-field" id="field-tempo-sem-divisao">
+                <label class="form-label">Tempo sem divisão (min)</label>
+                <input type="number" step="0.1" id="req-tempo-sem-divisao" placeholder="Ex: 1.0" class="form-input">
+              </div>
+              <div class="form-field" id="field-razao-split" style="display:none;">
+                <label class="form-label">Razão Split (1:X)</label>
+                <input type="text" id="req-razao-split" placeholder="Ex: 1:20" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Temp. Interface (ºC)</label>
+                <input type="number" id="req-temp-interface" placeholder="Ex: 280" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Temp. Fonte (ºC)</label>
+                <input type="number" id="req-temp-fonte" placeholder="Ex: 250" class="form-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- CARD 6: TIPO DE ANÁLISE E RESPONSÁVEL -->
+          <div class="card">
+            <div class="card-title">6. Tipo de Análise & Conclusão</div>
+            <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+              <div class="form-field" style="grid-column: span 2;">
+                <label class="form-label">Tipo de Análise</label>
+                <select id="req-tipo-analise" class="form-input" onchange="toggleAnalysisTypeFields()">
+                  <option value="Scan">Análise em Scan (Varredura de Massas)</option>
+                  <option value="SIM">Análise em SIM (Monitoramento de Íons Selecionados)</option>
+                </select>
+              </div>
+              <div class="form-field" id="field-scan-range" style="grid-column: span 2;">
+                <label class="form-label">Faixa de Massas Analisável (m/z)</label>
+                <input type="text" id="req-scan-range" placeholder="Ex: 35 - 500 m/z" class="form-input">
+              </div>
+              <div class="form-field" id="field-sim-ions" style="grid-column: span 2; display:none;">
+                <label class="form-label">Íons Analisáveis (m/z)</label>
+                <input type="text" id="req-sim-ions" placeholder="Ex: m/z 57, 71, 85, 99, 113" class="form-input">
+              </div>
+              <div class="form-field" style="grid-column: span 2;">
+                <hr style="border-color:var(--border);">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Data da Análise</label>
+                <input type="date" id="req-analysis-date" class="form-input">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Responsável Técnico</label>
+                <input type="text" id="req-tech-resp" placeholder="Nome do Responsável Técnico" class="form-input">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT 2: PREVIEW FIEL DO DOCUMENTO OFICIAL 9.847 V.00 -->
+      <div id="solicitacao-tab-preview-content" style="display:none; justify-content:center; padding:20px 0;">
+        <div id="official-ficha-document" class="official-doc-container">
+
+          <!-- PÁGINA 1 DE 2 -->
+          <div class="a4-page">
+            <div class="doc-header-box">
+              <div class="doc-header-left">
+                <div class="doc-logo-title">UNIVERSIDADE FEDERAL DO RIO DE JANEIRO</div>
+                <div class="doc-sub-title">INSTITUTO DE QUÍMICA — LAGOA / LABPEMOL</div>
+                <div class="doc-sub-desc">Laboratório de Pesquisa em Petróleo e Soluções Analíticas</div>
+              </div>
+              <div class="doc-header-right">
+                <div class="doc-code">9.847 V.00</div>
+                <div class="doc-rev">Ficha de Solicitação</div>
+              </div>
+            </div>
+
+            <div class="doc-title-banner">
+              FICHA DE SOLICITAÇÃO DE ANÁLISE – GC-MS
+            </div>
+
+            <!-- TABELA PEDIDO / DATA -->
+            <table class="doc-table mb10">
+              <tr>
+                <td style="width:33%;"><strong>Data do Pedido:</strong> <span id="pv-date">—</span></td>
+                <td style="width:33%;"><strong>Nº do Pedido:</strong> <span id="pv-order">—</span></td>
+                <td style="width:34%;"><strong>Recebido por:</strong> <span id="pv-received-by">—</span></td>
+              </tr>
+            </table>
+
+            <!-- SEÇÃO 1: SOLICITANTE -->
+            <div class="doc-section-title">1. DADOS DO SOLICITANTE</div>
+            <table class="doc-table mb10">
+              <tr>
+                <td colspan="2"><strong>Nome:</strong> <span id="pv-name">—</span></td>
+              </tr>
+              <tr>
+                <td style="width:50%;"><strong>Telefone:</strong> <span id="pv-phone">—</span></td>
+                <td style="width:50%;"><strong>E-mail:</strong> <span id="pv-email">—</span></td>
+              </tr>
+              <tr>
+                <td colspan="2"><strong>Instituição / Departamento:</strong> <span id="pv-dept">—</span></td>
+              </tr>
+            </table>
+
+            <!-- SEÇÃO 2: AMOSTRAS -->
+            <div class="doc-section-title">2. DADOS DA(S) AMOSTRA(S)</div>
+            <table class="doc-table mb10">
+              <tr>
+                <td style="width:25%;"><strong>Nº de Amostras:</strong> <span id="pv-sample-count">—</span></td>
+                <td style="width:37%;"><strong>Matriz:</strong> <span id="pv-sample-matrix">—</span></td>
+                <td style="width:38%;"><strong>Solvente:</strong> <span id="pv-sample-solvent">—</span></td>
+              </tr>
+              <tr>
+                <td colspan="2"><strong>Concentração:</strong> <span id="pv-sample-concentration">—</span></td>
+                <td><strong>Código(s):</strong> <span id="pv-sample-codes">—</span></td>
+              </tr>
+              <tr>
+                <td colspan="3"><strong>Outras Informações Relevantes:</strong> <span id="pv-sample-info">—</span></td>
+              </tr>
+            </table>
+
+            <!-- SEÇÃO 3: CONDIÇÕES DE ANÁLISE -->
+            <div class="doc-section-title">3. CONDIÇÕES DE ANÁLISE</div>
+            <table class="doc-table mb10">
+              <tr>
+                <td style="width:60%;"><strong>Coluna Cromatográfica:</strong> <span id="pv-column">—</span></td>
+                <td style="width:40%;"><strong>Dimensões:</strong> <span id="pv-col-dimensions">—</span></td>
+              </tr>
+              <tr>
+                <td colspan="2"><strong>Método de Rotina:</strong> <span id="pv-routine-method">—</span></td>
+              </tr>
+              <tr>
+                <td colspan="2" style="font-size:10px; color:#444; background:#f9f9f9; padding:6px; font-style:italic;">
+                  Caso a análise solicitada utilize um método já existente no laboratório, preencher apenas o nome e/ou
+                  número do mesmo, não sendo necessário o preenchimento da programação de temperatura e demais
+                  informações referentes ao método.
+                </td>
+              </tr>
+            </table>
+
+            <!-- SEÇÃO 4: PROGRAMAÇÃO DE TEMPERATURA -->
+            <div class="doc-section-title">4. PROGRAMAÇÃO DE TEMPERATURA (FORNO)</div>
+            <table class="doc-table doc-grid-table mb10">
+              <thead>
+                <tr style="background:#f0f0f0; text-align:center; font-weight:bold;">
+                  <td>Rampa</td>
+                  <td>Temp. Inicial (ºC)</td>
+                  <td>Taxa (ºC/min)</td>
+                  <td>Final (ºC)</td>
+                  <td>Isoterma (min)</td>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="text-align:center;">
+                  <td><strong>Rampa 1</strong></td>
+                  <td><span id="pv-r1-init">—</span></td>
+                  <td><span id="pv-r1-rate">—</span></td>
+                  <td><span id="pv-r1-final">—</span></td>
+                  <td><span id="pv-r1-hold">—</span></td>
+                </tr>
+                <tr style="text-align:center;">
+                  <td><strong>Rampa 2</strong></td>
+                  <td><span id="pv-r2-init">—</span></td>
+                  <td><span id="pv-r2-rate">—</span></td>
+                  <td><span id="pv-r2-final">—</span></td>
+                  <td><span id="pv-r2-hold">—</span></td>
+                </tr>
+                <tr style="text-align:center;">
+                  <td><strong>Rampa 3</strong></td>
+                  <td><span id="pv-r3-init">—</span></td>
+                  <td><span id="pv-r3-rate">—</span></td>
+                  <td><span id="pv-r3-final">—</span></td>
+                  <td><span id="pv-r3-hold">—</span></td>
+                </tr>
+                <tr style="text-align:center;">
+                  <td><strong>Rampa 4</strong></td>
+                  <td><span id="pv-r4-init">—</span></td>
+                  <td><span id="pv-r4-rate">—</span></td>
+                  <td><span id="pv-r4-final">—</span></td>
+                  <td><span id="pv-r4-hold">—</span></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="doc-footer">
+              <span>9.847 V.00 — Ficha de Solicitação de Análise GC-MS</span>
+              <span>Página 1 de 2</span>
+            </div>
+          </div>
+
+          <!-- PÁGINA 2 DE 2 -->
+          <div class="a4-page page-break-before">
+            <div class="doc-header-box">
+              <div class="doc-header-left">
+                <div class="doc-logo-title">UNIVERSIDADE FEDERAL DO RIO DE JANEIRO</div>
+                <div class="doc-sub-title">INSTITUTO DE QUÍMICA — LAGOA / LABPEMOL</div>
+              </div>
+              <div class="doc-header-right">
+                <div class="doc-code">9.847 V.00</div>
+                <div class="doc-rev">Ficha de Solicitação (Cont.)</div>
+              </div>
+            </div>
+
+            <!-- SEÇÃO 5: PARÂMETROS DO EQUIPAMENTO -->
+            <div class="doc-section-title">5. PARÂMETROS DO EQUIPAMENTO</div>
+            <table class="doc-table mb10">
+              <tr>
+                <td style="width:50%;"><strong>Temp. do Injetor:</strong> <span id="pv-temp-inj">—</span> ºC</td>
+                <td style="width:50%;"><strong>Volume de Injeção:</strong> <span id="pv-vol-inj">—</span> µL</td>
+              </tr>
+              <tr>
+                <td><strong>Vazão:</strong> <span id="pv-vazao">—</span> mL/min</td>
+                <td><strong>Fluxo de Purga:</strong> <span id="pv-fluxo-purga">—</span> mL/min</td>
+              </tr>
+              <tr>
+                <td colspan="2"><strong>Delay do Solvente:</strong> <span id="pv-delay-solvente">—</span> min</td>
+              </tr>
+              <tr>
+                <td colspan="2">
+                  <strong>Modo de Injeção:</strong><br>
+                  <div style="margin-top:4px; display:flex; gap:20px;">
+                    <span id="pv-box-splitless"><span class="doc-box" id="chk-splitless">[ ]</span> Splitless (Tempo s/
+                      divisão: <strong id="pv-tempo-sem-divisao">—</strong> min)</span>
+                    <span id="pv-box-split"><span class="doc-box" id="chk-split">[ ]</span> Split (Razão: <strong
+                        id="pv-razao-split">—</strong>)</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Temp. da Interface:</strong> <span id="pv-temp-interface">—</span> ºC</td>
+                <td><strong>Temp. da Fonte:</strong> <span id="pv-temp-fonte">—</span> ºC</td>
+              </tr>
+            </table>
+
+            <!-- SEÇÃO 6: TIPO DE ANÁLISE -->
+            <div class="doc-section-title">6. TIPO DE ANÁLISE</div>
+            <table class="doc-table mb10">
+              <tr>
+                <td style="width:50%;">
+                  <span class="doc-box" id="chk-scan">[ ]</span> <strong>Análise em Scan</strong><br>
+                  <small style="color:#555;">Faixa de massas: <strong id="pv-scan-range">—</strong></small>
+                </td>
+                <td style="width:50%;">
+                  <span class="doc-box" id="chk-sim">[ ]</span> <strong>Análise em SIM</strong><br>
+                  <small style="color:#555;">Íons: <strong id="pv-sim-ions">—</strong></small>
+                </td>
+              </tr>
+            </table>
+
+            <!-- SEÇÃO 7: DADOS DA ANÁLISE -->
+            <div class="doc-section-title">7. DADOS DA ANÁLISE (PREENCHIMENTO LABORATÓRIO)</div>
+            <table class="doc-table mb15">
+              <tr>
+                <td style="width:50%;"><strong>Data da Análise:</strong> <span id="pv-analysis-date">—</span></td>
+                <td style="width:50%;"><strong>Responsável Técnico:</strong> <span id="pv-tech-resp">—</span></td>
+              </tr>
+            </table>
+
+            <!-- SEÇÃO 8: INFORMAÇÕES INSTITUCIONAIS -->
+            <div class="doc-section-title">8. CONTATOS E INFORMAÇÕES DO LABORATÓRIO</div>
+            <div
+              style="font-size:11px; color:#444; border:1px solid #ccc; padding:10px; border-radius:4px; line-height:1.5; background:#fafafa;">
+              <strong>Laboratório de Pesquisa em Petróleo e Soluções Analíticas (LAGOA / LABPEMOL)</strong><br>
+              Instituto de Química — Universidade Federal do Rio de Janeiro (UFRJ)<br>
+              Av. Athos da Silveira Ramos, 149, Bloco A, Sala 611, Cidade Universitária, Rio de Janeiro - RJ.<br>
+              E-mail: contato.lagoa@iq.ufrj.br | Telefone: +55 (21) 3938-7000<br>
+              <em>Documento oficial padronizado sob registro 9.847 V.00. Preservar este impresso junto aos laudos
+                analíticos.</em>
+            </div>
+
+            <div class="doc-footer">
+              <span>9.847 V.00 — Ficha de Solicitação de Análise GC-MS</span>
+              <span>Página 2 de 2</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB CONTENT 3: HISTORICO DE SOLICITAÇÕES -->
+      <div id="solicitacao-tab-history-content" style="display:none;">
+        <div class="card mb24" style="padding:16px;">
+          <div style="display:flex; gap:12px; align-items:center;">
+            <input type="text" id="sol-search-input" placeholder="Buscar por Nº do Pedido, Solicitante ou Amostra..."
+              class="form-input" style="flex:1;">
+            <button class="btn btn-outline" onclick="searchSolicitacoes()">Buscar</button>
+            <button class="btn btn-outline" onclick="clearSolicitacaoSearch()">Limpar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Solicitações Registradas</div>
+          <div style="overflow-x:auto; margin-top:12px;">
+            <table class="data-table" style="width:100%; font-size:13px;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border); color:var(--muted);">
+                  <th style="padding:8px;">Nº Pedido</th>
+                  <th style="padding:8px;">Data</th>
+                  <th style="padding:8px;">Solicitante</th>
+                  <th style="padding:8px;">Departamento</th>
+                  <th style="padding:8px;">Amostras</th>
+                  <th style="padding:8px;">Método / Modo</th>
+                  <th style="padding:8px; text-align:center;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="solicitacoes-table-body">
+                <!-- Preenchido via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </main>

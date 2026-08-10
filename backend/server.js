@@ -59,6 +59,34 @@ async function initDB() {
             requester TEXT NOT NULL,
             obs TEXT
         );
+        CREATE TABLE IF NOT EXISTS analysis_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_number TEXT UNIQUE,
+            request_date TEXT,
+            received_by TEXT,
+            requester_name TEXT,
+            requester_phone TEXT,
+            requester_email TEXT,
+            requester_dept TEXT,
+            sample_count INTEGER,
+            sample_codes TEXT,
+            sample_matrix TEXT,
+            sample_solvent TEXT,
+            sample_concentration TEXT,
+            sample_info TEXT,
+            column_name TEXT,
+            column_dimensions TEXT,
+            routine_method TEXT,
+            temp_program_json TEXT,
+            equipment_params_json TEXT,
+            analysis_type TEXT,
+            scan_range TEXT,
+            sim_ions TEXT,
+            analysis_date TEXT,
+            tech_resp TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_req_order ON analysis_requests(order_number);
     `);
 
     // Tenta adicionar a coluna tamb a tabelas existentes
@@ -298,6 +326,117 @@ app.delete('/api/bookings/:id', async (req, res) => {
         appendTxtLog(`Reserva ID #${id} excluída.`);
         const allBookings = await db.all('SELECT * FROM bookings ORDER BY start_date ASC, id ASC');
         res.json({ success: true, bookings: allBookings });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Rotas de Fichas de Solicitação de Análise (GC-MS - Doc 9.847 V.00)
+app.get('/api/requests', async (req, res) => {
+    try {
+        const { q } = req.query;
+        let query = 'SELECT * FROM analysis_requests';
+        let params = [];
+        if (q) {
+            query += ' WHERE order_number LIKE ? OR requester_name LIKE ? OR sample_codes LIKE ? OR requester_dept LIKE ?';
+            const term = `%${q}%`;
+            params = [term, term, term, term];
+        }
+        query += ' ORDER BY id DESC';
+        const requests = await db.all(query, params);
+        res.json({ success: true, requests });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/requests/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const request = await db.get('SELECT * FROM analysis_requests WHERE id = ?', [id]);
+        if (!request) return res.status(404).json({ error: 'Solicitação não encontrada.' });
+        res.json({ success: true, request });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/requests', async (req, res) => {
+    try {
+        const data = req.body;
+        const {
+            id, order_number, request_date, received_by,
+            requester_name, requester_phone, requester_email, requester_dept,
+            sample_count, sample_codes, sample_matrix, sample_solvent, sample_concentration, sample_info,
+            column_name, column_dimensions, routine_method,
+            temp_program_json, equipment_params_json,
+            analysis_type, scan_range, sim_ions,
+            analysis_date, tech_resp
+        } = data;
+
+        const orderNum = order_number || `REQ-${Date.now().toString().slice(-6)}`;
+        const tempJson = typeof temp_program_json === 'object' ? JSON.stringify(temp_program_json) : (temp_program_json || '[]');
+        const equipJson = typeof equipment_params_json === 'object' ? JSON.stringify(equipment_params_json) : (equipment_params_json || '{}');
+
+        if (id) {
+            await db.run(`
+                UPDATE analysis_requests SET
+                    order_number = ?, request_date = ?, received_by = ?,
+                    requester_name = ?, requester_phone = ?, requester_email = ?, requester_dept = ?,
+                    sample_count = ?, sample_codes = ?, sample_matrix = ?, sample_solvent = ?, sample_concentration = ?, sample_info = ?,
+                    column_name = ?, column_dimensions = ?, routine_method = ?,
+                    temp_program_json = ?, equipment_params_json = ?,
+                    analysis_type = ?, scan_range = ?, sim_ions = ?,
+                    analysis_date = ?, tech_resp = ?
+                WHERE id = ?
+            `, [
+                orderNum, request_date, received_by,
+                requester_name, requester_phone, requester_email, requester_dept,
+                parseInt(sample_count) || 0, sample_codes, sample_matrix, sample_solvent, sample_concentration, sample_info,
+                column_name, column_dimensions, routine_method,
+                tempJson, equipJson,
+                analysis_type, scan_range, sim_ions,
+                analysis_date, tech_resp,
+                id
+            ]);
+            appendTxtLog(`Solicitação Nº ${orderNum} (ID: ${id}) atualizada no banco.`);
+        } else {
+            const result = await db.run(`
+                INSERT INTO analysis_requests (
+                    order_number, request_date, received_by,
+                    requester_name, requester_phone, requester_email, requester_dept,
+                    sample_count, sample_codes, sample_matrix, sample_solvent, sample_concentration, sample_info,
+                    column_name, column_dimensions, routine_method,
+                    temp_program_json, equipment_params_json,
+                    analysis_type, scan_range, sim_ions,
+                    analysis_date, tech_resp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+                orderNum, request_date, received_by,
+                requester_name, requester_phone, requester_email, requester_dept,
+                parseInt(sample_count) || 0, sample_codes, sample_matrix, sample_solvent, sample_concentration, sample_info,
+                column_name, column_dimensions, routine_method,
+                tempJson, equipJson,
+                analysis_type, scan_range, sim_ions,
+                analysis_date, tech_resp
+            ]);
+            appendTxtLog(`Nova solicitação Nº ${orderNum} (ID: ${result.lastID}) gravada.`);
+        }
+
+        const requests = await db.all('SELECT * FROM analysis_requests ORDER BY id DESC');
+        res.json({ success: true, order_number: orderNum, requests });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/requests/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.run('DELETE FROM analysis_requests WHERE id = ?', [id]);
+        appendTxtLog(`Solicitação ID #${id} excluída.`);
+        const requests = await db.all('SELECT * FROM analysis_requests ORDER BY id DESC');
+        res.json({ success: true, requests });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
